@@ -123,9 +123,12 @@ On Apple M1 Max, inference of the above input file (20 tokens):
 
     fastGPT (Accelerate matmul): 0.797s
     PyTorch (conda-forge):       0.873s
+    picoGPT (parallel):          1.694s
+    picoGPT (serial):            2.429s
     fastGPT (default matmul):    6.449s
 
 Total run:
 
-    ./gpt2 (Accelerate): 0.828s
-    python pt.py:        5.865s
+    fastGPT (./gpt2):       0.828s
+    picoGPT:                4.123s
+    PyTorch (python pt.py): 5.865s
