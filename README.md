@@ -48,7 +48,7 @@ Create the `model.dat` file from a given GPT-2 model. Supported sizes (and the
 corresponding names to be used in `pt.py`): "124M" (`gpt2`), "355M"
 (`gpt-medium`), "774M" (`gpt-large`), "1558M" (`gpt-xl`).
 
-    python create_model.py --models_dir "../gpt2/models" --model_size "124M"
+    python create_model.py --models_dir "models" --model_size "124M"
 
 Create an input file:
 
