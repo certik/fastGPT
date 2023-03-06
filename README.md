@@ -45,8 +45,10 @@ Configure and build:
     make
 
 Create the `model.dat` file from a given GPT-2 model. Supported sizes (and the
-corresponding names to be used in `pt.py`): "124M" (`gpt2`), "355M"
-(`gpt-medium`), "774M" (`gpt-large`), "1558M" (`gpt-xl`).
+corresponding names to be used in `pt.py`, and the approximate download size):
+"124M" (`gpt2`, 0.5GB), "355M" (`gpt-medium`, 1.5GB), "774M" (`gpt-large`,
+3GB), "1558M" (`gpt-xl`, 6GB). This will download the model and cache it for
+subsequent runs:
 
     python create_model.py --models_dir "models" --model_size "124M"
 
