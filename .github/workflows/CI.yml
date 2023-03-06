@@ -27,6 +27,8 @@ jobs:
       - uses: mamba-org/provision-with-micromamba@main
         with:
           environment-file: environment.yml
+          extra-specs: |
+            sel(osx): gfortran=11.3.0
 
       - uses: hendrikmuhs/ccache-action@main
         with:
