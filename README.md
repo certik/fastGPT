@@ -60,6 +60,58 @@ Run (requires `model.dat` and `input.dat` in the current directory):
 
     ./gpt2
 
+### Example Output
+
+The above `./gpt2` command prints on Apple M1 Max:
+```
+$ ./gpt2
+Loading the model...
+    done.
+Model parameters:
+n_vocab = 50257
+n_ctx   =  1024
+n_embd  =   768
+n_layer =    12
+n_head  =    12
+
+Input parameters:
+n_seq                =  19
+n_tokens_to_generate =  20
+
+Input tokens:
+ 36235 39141 18765  1143   326  9061   561   530  1110  1716   845  3665    11   475   772   339   714   407  5967
+Decoded input as text:
+Alan Turing theorized that computers would one day become very powerful, but even he could not imagine
+Running model...
+           1         703
+           2         484
+           3         561
+           4         307
+           5        1498
+           6         284
+           7         466
+           8         523
+           9          13
+          10         198
+          11         198
+          12           1
+          13          40
+          14         892
+          15         326
+          16         262
+          17         749
+          18        1593
+          19        1517
+          20         318
+    done. Time:   0.795s
+Output tokens:
+   703   484   561   307  1498   284   466   523    13   198   198     1    40   892   326   262   749  1593  1517   318
+Decoded output as text:
+ how they would be able to do so.
+
+"I think that the most important thing is
+```
+
 ### Configuration Options
 
 You can turn macOS Accelerate Framework on and off by passing
