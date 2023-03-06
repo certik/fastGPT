@@ -1,0 +1,13 @@
+name: fastgpt
+channels:
+  - conda-forge
+dependencies:
+  - python=3.9
+  - numpy=1.24.2
+  - tensorflow=2.11.0
+  - tqdm=4.65.0
+  - fire=0.4.0
+  - regex=2022.10.31
+  #- gfortran=11.3.0
+  - cmake=3.25.2
+  - transformers=4.26.1

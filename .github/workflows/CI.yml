@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+
+jobs:
+
+  basic:
+    name: Build and run the model on an example
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - uses: mamba-org/provision-with-micromamba@main
+        with:
+          environment-file: environment.yml
+
+      - uses: hendrikmuhs/ccache-action@main
+        with:
+          variant: sccache
+          key: ${{ github.job }}-${{ matrix.os }}
+
+      - name: Build and run
+        shell: bash -l {0}
+        run: |
+            ci/build.sh
