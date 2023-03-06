@@ -12,8 +12,13 @@ on:
 jobs:
 
   basic:
-    name: Build and run the model on an example
-    runs-on: ubuntu-latest
+    name: Linux/macOS (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["macos-latest", "ubuntu-latest"]
+
     steps:
       - uses: actions/checkout@v3
         with:
@@ -22,6 +27,8 @@ jobs:
       - uses: mamba-org/provision-with-micromamba@main
         with:
           environment-file: environment.yml
+          extra-specs: |
+            sel(osx): gfortran=11.3.0
 
       - uses: hendrikmuhs/ccache-action@main
         with:
