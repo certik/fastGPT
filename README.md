@@ -1,7 +1,7 @@
 # fastGPT
 
-The progression of GPT-2 codes from the original to simpler / better (in some
-sense):
+The progression of GPT-2 codes from the original to "minimal", "nano" and
+"pico":
 
 * [openai/gpt-2](https://github.com/openai/gpt-2)
 * [karpathy/minGPT](https://github.com/karpathy/mingpt)
@@ -22,8 +22,8 @@ achieved by using Fortran.
 
 A quick breakdown of each of the files:
 
-* `main.f90`: the main driver
 * `gpt2.f90`: the actual GPT-2 model and a decoder
+* `main.f90`: the main driver
 * `create_model.py`: downloads the TensorFlow model and converts to our own
   format (`model.dat`)
 * `encode_input.py`: encodes the text input into tokens (input file for `gpt2`)
