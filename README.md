@@ -41,7 +41,7 @@ Install prerequisites:
 
 Configure and build:
 
-    cmake .
+    FC=gfortran cmake .
     make
 
 Create the `model.dat` file from a given GPT-2 model. Supported sizes (and the
