@@ -7,6 +7,23 @@ real(sp), parameter :: pi = 3.14159265358979323846_sp
 
 contains
 
+elemental real(sp) function fast_tanh(x) result(y)
+real(sp), intent(in) :: x
+real(sp) :: x2
+if (x > 5) then
+    y = 1
+elseif (x < -5) then
+    y = -1
+else
+    x2 = x*x
+    y = x * (0.98569772605911309407 + x2 *(-0.2794500993392901382 &
+        + x2 * (6.8280504526399188164e-2 + x2 * (-1.0972014877337651823e-2 &
+        + x2 * (1.1132367134444316902e-3 + x2 * (-7.018851897305717565e-5 &
+        + x2 * (2.656616768082727089e-6 + x2 * (-5.5138381821615909058e-8 &
+        + x2 * 4.8162484477588665996e-10))))))))
+end if
+end function
+
 elemental real(sp) function gelu(x) result(y)
 real(sp), intent(in) :: x
 y = 0.5_sp * x * (1 + tanh(sqrt(2 / pi) * (x + 0.044715_sp * x**3)))
