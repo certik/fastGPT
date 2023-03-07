@@ -15,17 +15,28 @@ if (NOT CMAKE_BUILD_TYPE)
 endif ()
 if (NOT (CMAKE_BUILD_TYPE STREQUAL "Debug" OR
         CMAKE_BUILD_TYPE STREQUAL "Release"))
-    message("${CMAKE_BUILD_TYPE}")
     message(FATAL_ERROR "CMAKE_BUILD_TYPE must be one of: Debug, Release (current value: '${CMAKE_BUILD_TYPE}')")
 endif ()
 
 if (APPLE)
-    set(DEFAULT_ACCELERATE_FRAMEWORK yes)
+    set(DEFAULT_FASTGPT_BLAS "Accelerate")
 else()
-    set(DEFAULT_ACCELERATE_FRAMEWORK no)
+    set(DEFAULT_FASTGPT_BLAS "Fortran")
 endif()
-set(WITH_ACCELERATE_FRAMEWORK ${DEFAULT_ACCELERATE_FRAMEWORK}
-    CACHE BOOL "Build with macoS Accelerate framework")
+set(FASTGPT_BLAS ${DEFAULT_FASTGPT_BLAS}
+    CACHE BOOL "The BLAS library that fastGPT should use")
+if (NOT (FASTGPT_BLAS STREQUAL "Accelerate" OR
+    FASTGPT_BLAS STREQUAL "OpenBLAS" OR
+    FASTGPT_BLAS STREQUAL "Fortran"))
+    message(FATAL_ERROR "FASTGPT_BLAS must be one of: OpenBLAS, Accelerate, Fortran (current value: '${FASTGPT_BLAS}')")
+endif ()
+if (FASTGPT_BLAS STREQUAL "Accelerate")
+    # pass
+elseif (FASTGPT_BLAS STREQUAL "OpenBLAS")
+    find_package(OPENBLAS REQUIRED)
+else()
+    # pass
+endif()
 
 enable_testing()
 
@@ -33,15 +44,20 @@ set(SRC
     main.f90
     gpt2.f90
     )
-if(WITH_ACCELERATE_FRAMEWORK)
+if (FASTGPT_BLAS STREQUAL "Accelerate")
     set(SRC ${SRC} linalg_accelerate.c)
+    set(SRC ${SRC} linalg_c.f90)
+elseif (FASTGPT_BLAS STREQUAL "OpenBLAS")
+    set(SRC ${SRC} linalg_openblas.c)
     set(SRC ${SRC} linalg_c.f90)
 else()
     set(SRC ${SRC} linalg_f.f90)
 endif()
 add_executable(gpt2 ${SRC})
-if(WITH_ACCELERATE_FRAMEWORK)
+if (FASTGPT_BLAS STREQUAL "Accelerate")
     target_link_options(gpt2 PRIVATE -framework accelerate)
+elseif (FASTGPT_BLAS STREQUAL "OpenBLAS")
+    target_link_libraries(gpt2 p::openblas)
 endif()
 
 
@@ -56,4 +72,4 @@ else ()
     message("Fortran compiler flags: ${CMAKE_Fortran_FLAGS_RELEASE}")
 endif ()
 message("Installation prefix: ${CMAKE_INSTALL_PREFIX}")
-message("WITH_ACCELERATE_FRAMEWORK: ${WITH_ACCELERATE_FRAMEWORK}")
+message("FASTGPT_BLAS: ${FASTGPT_BLAS}")

@@ -114,10 +114,12 @@ Decoded output as text:
 "I think that the most important thing is
 ```
 
-### Configuration Options
+### BLAS Implementation
 
-You can turn macOS Accelerate Framework on and off by passing
-`-DWITH_ACCELERATE_FRAMEWORK=yes` (and `no`) to `cmake`.
+You can choose which BLAS implementation to use for `matmul` using:
+* `-DFASTGPT_BLAS=OpenBLAS`: Use OpenBLAS
+* `-DFASTGPT_BLAS=Accelerate`: Use the macOS Accelerate Framework
+* `-DFASTGPT_BLAS=Fortran`: Use the default Fortran's intrinsic `matmul`
 
 ## Benchmarks
 

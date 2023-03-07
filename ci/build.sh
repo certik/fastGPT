@@ -11,5 +11,11 @@ python encode_input.py \
     -n 20
 ./gpt2
 
+make clean
+rm CMakeCache.txt
+cmake -DFASTGPT_BLAS=OpenBLAS .
+make
+./gpt2
+
 rm gpt2
 python pt.py
