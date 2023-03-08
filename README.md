@@ -119,7 +119,13 @@ Decoded output as text:
 You can choose which BLAS implementation to use for `matmul` using:
 * `-DFASTGPT_BLAS=OpenBLAS`: Use OpenBLAS
 * `-DFASTGPT_BLAS=Accelerate`: Use the macOS Accelerate Framework
+* `-DFASTGPT_BLAS=MKL`: Use the Intel oneMKL library
 * `-DFASTGPT_BLAS=Fortran`: Use the default Fortran's intrinsic `matmul`
+
+#### OneMKL
+
+MKL is supported via the oneMKL CMake config file (`MKLConfig.cmake`), available starting with the Intel® oneAPI Math Kernel Library (oneMKL) 2021.3 release. By default the config file will look for the `MKLROOT` environment variable. If the config file can't be located automatically use the manual directive: `-DMKL_DIR=<Full path to MKLConfig.cmake>`. Assuming a default installation you can initialize the MKL environment variables with the command: `source /opt/intel/oneapi/mkl/env/vars.sh`.
+
 
 ## Benchmarks
 

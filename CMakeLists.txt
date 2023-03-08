@@ -27,13 +27,16 @@ set(FASTGPT_BLAS ${DEFAULT_FASTGPT_BLAS}
     CACHE BOOL "The BLAS library that fastGPT should use")
 if (NOT (FASTGPT_BLAS STREQUAL "Accelerate" OR
     FASTGPT_BLAS STREQUAL "OpenBLAS" OR
+    FASTGPT_BLAS STREQUAL "MKL" OR
     FASTGPT_BLAS STREQUAL "Fortran"))
-    message(FATAL_ERROR "FASTGPT_BLAS must be one of: OpenBLAS, Accelerate, Fortran (current value: '${FASTGPT_BLAS}')")
+    message(FATAL_ERROR "FASTGPT_BLAS must be one of: OpenBLAS, MKL, Accelerate, Fortran (current value: '${FASTGPT_BLAS}')")
 endif ()
 if (FASTGPT_BLAS STREQUAL "Accelerate")
     # pass
 elseif (FASTGPT_BLAS STREQUAL "OpenBLAS")
     find_package(OPENBLAS REQUIRED)
+elseif (FASTGPT_BLAS STREQUAL "MKL")
+    find_package(MKL CONFIG REQUIRED)
 else()
     # pass
 endif()
@@ -50,6 +53,8 @@ if (FASTGPT_BLAS STREQUAL "Accelerate")
 elseif (FASTGPT_BLAS STREQUAL "OpenBLAS")
     set(SRC ${SRC} linalg_openblas.c)
     set(SRC ${SRC} linalg_c.f90)
+elseif (FASTGPT_BLAS STREQUAL "MKL")
+    set(SRC ${SRC} linalg_mkl.f90)
 else()
     set(SRC ${SRC} linalg_f.f90)
 endif()
@@ -58,6 +63,9 @@ if (FASTGPT_BLAS STREQUAL "Accelerate")
     target_link_options(gpt2 PRIVATE -framework accelerate)
 elseif (FASTGPT_BLAS STREQUAL "OpenBLAS")
     target_link_libraries(gpt2 p::openblas)
+elseif (FASTGPT_BLAS STREQUAL "MKL")
+    target_compile_options(gpt2 PRIVATE $<TARGET_PROPERTY:MKL::MKL,INTERFACE_COMPILE_OPTIONS>)
+    target_link_libraries(gpt2 PRIVATE $<LINK_ONLY:MKL::MKL>)
 endif()
 
 
