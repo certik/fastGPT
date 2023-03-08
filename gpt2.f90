@@ -106,8 +106,8 @@ real(sp) :: a(4*size(x,1),size(x,2)), x0, x_, x2
 integer :: i, j
 !a = linear(x, fc_w, fc_b)
 call matmul_2d(fc_w, x, a)
-do j = 1, size(a,1)
 do i = 1, size(a,2)
+do j = 1, size(a,1)
     !a(j,i) = fast_gelu(a(j,i) + fc_b(j))
     x0 = a(j,i) + fc_b(j)
     x_ = sqrt(2 / pi) * (x0 + 0.044715_sp * x0**3)
