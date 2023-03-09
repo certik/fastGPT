@@ -31,9 +31,10 @@ if (NOT (FASTGPT_BLAS STREQUAL "Accelerate" OR
     message(FATAL_ERROR "FASTGPT_BLAS must be one of: OpenBLAS, Accelerate, Fortran (current value: '${FASTGPT_BLAS}')")
 endif ()
 if (FASTGPT_BLAS STREQUAL "Accelerate")
-    # pass
+    find_package(OMP REQUIRED)
 elseif (FASTGPT_BLAS STREQUAL "OpenBLAS")
     find_package(OPENBLAS REQUIRED)
+    find_package(OMP REQUIRED)
 else()
     # pass
 endif()
@@ -56,8 +57,10 @@ endif()
 add_executable(gpt2 ${SRC})
 if (FASTGPT_BLAS STREQUAL "Accelerate")
     target_link_options(gpt2 PRIVATE -framework accelerate)
+    target_link_libraries(gpt2 p::omp)
 elseif (FASTGPT_BLAS STREQUAL "OpenBLAS")
     target_link_libraries(gpt2 p::openblas)
+    target_link_libraries(gpt2 p::omp)
 endif()
 
 
