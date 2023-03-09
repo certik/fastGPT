@@ -24,6 +24,7 @@ integer :: u
 
 ! Load the model
 print "(a)", "Loading the model..."
+call cpu_time(t1)
 open(newunit=u, file="model.dat", form="unformatted", access="stream", status="old")
 read(u) n_vocab, n_ctx, n_embd, n_layer, n_head, n_decoder_idx, n_decoder_txt, &
     n_byte_decoder
@@ -47,7 +48,8 @@ read(u) wte, wpe, &
     lnf_b, lnf_g, &
     decoder_idx, decoder_txt, byte_decoder
 close(u)
-print "(a)", "    done."
+call cpu_time(t2)
+print "(a,f8.3,a)", "    done. Time:", t2-t1, "s"
 
 ! Load the input
 open(newunit=u, file="input.dat", form="unformatted", access="stream", status="old")
