@@ -221,6 +221,7 @@ character, intent(in) :: decoder_txt(:)
 character(:), allocatable :: output
 character(:), allocatable :: output2, tmp
 integer :: i, c, d
+allocate(character(0) :: output2) ! Fix GFortran warning
 output2 = ""
 do i = 1, size(tokens)
     output2 = output2 // c2s(decoder_txt(idx(tokens(i))+1:idx(tokens(i)+1)))

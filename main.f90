@@ -103,6 +103,7 @@ call cpu_time(t2)
 print "(a,f8.3,a,f4.2,a)", "    done. Time:", t2o-t1o, "s (", (t2-t1)/(t2o-t1o), "x)"
 print "(a)", "Output tokens:"
 print "(1000(i6))", output
+allocate(character(0) :: output_txt) ! Fix GFortran warning
 output_txt = decode(output, decoder_idx, decoder_txt, byte_decoder)
 print "(a)", "Decoded output as text:"
 print "(a)", output_txt
