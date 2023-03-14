@@ -1,15 +1,10 @@
 program gpt2
 use gpt2_mod, only: generate, decode
+use omp, only: omp_get_wtime
 implicit none
 
 integer, parameter :: sp = kind(0.0)
 integer, parameter :: dp = kind(0.d0)
-
-interface
-    real(dp) function omp_get_wtime()
-    import :: dp
-    end function
-end interface
 
 integer :: n_vocab, n_ctx, n_seq, n_embd, n_layer, n_head, &
     n_tokens_to_generate, n_decoder_idx, n_decoder_txt, n_byte_decoder

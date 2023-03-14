@@ -46,13 +46,22 @@ set(SRC
     gpt2.f90
     )
 if (FASTGPT_BLAS STREQUAL "Accelerate")
-    set(SRC ${SRC} linalg_accelerate.c)
-    set(SRC ${SRC} linalg_c.f90)
+    set(SRC ${SRC}
+        linalg_accelerate.c
+        linalg_c.f90
+        omp.f90
+    )
 elseif (FASTGPT_BLAS STREQUAL "OpenBLAS")
-    set(SRC ${SRC} linalg_openblas.c)
-    set(SRC ${SRC} linalg_c.f90)
+    set(SRC ${SRC}
+        linalg_openblas.c
+        linalg_c.f90
+        omp.f90
+    )
 else()
-    set(SRC ${SRC} linalg_f.f90)
+    set(SRC ${SRC}
+        linalg_f.f90
+        omp_dummy.f90
+    )
 endif()
 add_executable(gpt2 ${SRC})
 if (FASTGPT_BLAS STREQUAL "Accelerate")
