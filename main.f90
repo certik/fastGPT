@@ -22,6 +22,7 @@ integer, allocatable :: output(:)
 character(:), allocatable :: output_txt
 real(dp) :: t1, t2, t1o, t2o
 integer :: u
+logical :: use_cache
 
 ! Load the model
 print "(a)", "Loading the model..."
@@ -86,13 +87,14 @@ allocate(output(n_tokens_to_generate))
 print "(a)", "Running model..."
 call cpu_time(t1)
 t1o = omp_get_wtime()
+use_cache = .true.
 output = generate(n_tokens_to_generate, n_vocab, n_ctx, size(input), n_embd, &
     n_layer, n_head, &
     input, &
     wte, wpe, &
     mlp_fc_w, mlp_fc_b, mlp_proj_w, mlp_proj_b, &
     attn_w, attn_b, attn_proj_w, attn_proj_b, &
-    ln1_g, ln1_b, ln2_g, ln2_b, lnf_g, lnf_b)
+    ln1_g, ln1_b, ln2_g, ln2_b, lnf_g, lnf_b, use_cache)
 t2o = omp_get_wtime()
 call cpu_time(t2)
 print "(a,f8.3,a,f4.2,a)", "    done. Time:", t2o-t1o, "s (", (t2-t1)/(t2o-t1o), "x)"
