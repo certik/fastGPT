@@ -125,14 +125,19 @@ You can choose which BLAS implementation to use for `matmul` using:
 
 On Apple M1 Max, inference of the above input file (20 tokens):
 
-    fastGPT (Accelerate matmul): 0.797s
-    PyTorch (conda-forge):       0.873s
-    picoGPT (parallel):          1.694s
-    picoGPT (serial):            2.429s
-    fastGPT (default matmul):    6.449s
+                                    1 core  2 cores  4 cores  8 cores
 
-Total run:
+    fastGPT (Accelerate, fast_tanh) 0.288s
+    fastGPT (Accelerate)            0.299s
+    fastGPT (OpenBLAS)              0.837s  0.514s    0.341s   0.339s
+    PyTorch (OpenBLAS)              0.873s  0.539s    0.386s   0.392s
+    fastGPT (Accelerate, no cache)  0.717s
+    fastGPT (OpenBLAS, no cache)    2.343s  1.603s    1.209s   1.018s
+    PyTorch (OpenBLAS, no cache)    2.356s  1.520s    1.104s   0.997s
+    picoGPT (OpenBLAS, no cache)    2.427s  1.645s    1.272s   1.081s
 
-    fastGPT (./gpt2):       0.828s
-    picoGPT:                4.123s
-    PyTorch (python pt.py): 5.865s
+Total run (includes loading the model and Python imports):
+
+    fastGPT (Accelerate, fast_tanh): 0.401s
+    picoGPT (8 cores):               3.445s
+    PyTorch (OpenBLAS, 4 cores):     4.867s
