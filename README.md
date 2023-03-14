@@ -141,3 +141,14 @@ Total run (includes loading the model and Python imports):
     fastGPT (Accelerate, fast_tanh): 0.401s
     picoGPT (8 cores):               3.445s
     PyTorch (OpenBLAS, 4 cores):     4.867s
+
+## TODO
+
+* Parallelization:
+  * Over heads: https://github.com/certik/fastGPT/issues/2
+  * MPI: https://github.com/certik/fastGPT/issues/5
+* Other sampling methods: https://github.com/certik/fastGPT/issues/8
+* Batching: https://github.com/certik/fastGPT/issues/7
+* Improve the UI:
+  * Implement the input tokenizer in Fortran: https://github.com/certik/fastGPT/issues/1
+  * Show the words as they are generated: https://github.com/certik/fastGPT/issues/6
