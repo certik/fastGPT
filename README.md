@@ -10,7 +10,9 @@ The progression of GPT-2 codes from the original to "minimal", "nano" and
 
 `fastGPT` is very similar to `picoGPT` (very small and readable), but it is
 also fast (see the Benchmarks section below). The speed and readability is
-achieved by using Fortran.
+achieved by using Fortran. I wrote a
+[blog post](https://ondrejcertik.com/blog/2023/03/fastgpt-faster-than-pytorch-in-300-lines-of-fortran/)
+introducing fastGPT.
 
 `fastGPT` features:
 * Fast? ✅
