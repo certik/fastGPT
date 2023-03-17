@@ -77,9 +77,10 @@ elseif (FASTGPT_BLAS STREQUAL "OpenBLAS")
         "$<IF:$<BOOL:${OMP_FOUND}>,p::omp,OpenMP::OpenMP_Fortran>")
 endif()
 
-
-file(GENERATE OUTPUT .gitignore CONTENT "*")
-
+if(NOT PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
+    # Git auto-ignore out-of-source build directory
+    file(GENERATE OUTPUT .gitignore CONTENT "*")
+endif()
 # --- Python tests ---≈)
 
 set(Python_FIND_VIRTUALENV ONLY) # helps ensure conda environment required in README.md is used
