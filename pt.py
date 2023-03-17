@@ -13,7 +13,7 @@ print("  Time: ", t2-t1)
 text="Alan Turing theorized that computers would one day become very powerful, but even he could not imagine"
 print("Generating")
 t1 = clock()
-g = generator(text, do_sample=False, max_new_tokens=20)
+g = generator(text, do_sample=False, max_new_tokens=20, use_cache=True)
 t2 = clock()
 print("  Time: ", t2-t1)
 output = g[0]["generated_text"]

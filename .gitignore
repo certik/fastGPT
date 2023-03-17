@@ -1,0 +1,5 @@
+gpt2/
+encoder.json
+input.dat
+model.dat
+vocab.bpe
