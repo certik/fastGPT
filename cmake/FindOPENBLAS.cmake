@@ -1,5 +1,6 @@
-find_path(OPENBLAS_INCLUDE_DIR cblas.h)
-find_library(OPENBLAS_LIBRARY openblas)
+find_path(OPENBLAS_INCLUDE_DIR NAMES cblas.h PATHS /usr/include/openblas)
+
+find_library(OPENBLAS_LIBRARY NAMES openblas)
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(OPENBLAS DEFAULT_MSG OPENBLAS_INCLUDE_DIR

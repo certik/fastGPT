@@ -10,10 +10,9 @@ if (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
     set(common "-Wall -Wextra -Wimplicit-interface -fPIC")
     set(CMAKE_Fortran_FLAGS_RELEASE_INIT "${common} -O3 -march=native -ffast-math -funroll-loops")
     set(CMAKE_Fortran_FLAGS_DEBUG_INIT   "${common} -g -fcheck=all -fbacktrace")
-elseif (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
+elseif (CMAKE_Fortran_COMPILER_ID MATCHES "^Intel")
     # ifort
     set(common "-warn all")
     set(CMAKE_Fortran_FLAGS_RELEASE_INIT "${common} -xHOST -O3 -no-prec-div -static")
     set(CMAKE_Fortran_FLAGS_DEBUG_INIT   "${common} -check all")
 endif ()
-
