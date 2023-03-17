@@ -2,20 +2,13 @@
 
 set -ex
 
-cmake .
-make
-mkdir models
-python create_model.py --models_dir "models" --model_size "124M"
-python encode_input.py \
-    "Alan Turing theorized that computers would one day become very powerful, but even he could not imagine" \
-    -n 20
-./gpt2
+cmake -Bbuild
+cmake --build build --parallel
+ctest --test-dir build -V
 
-make clean
-rm CMakeCache.txt
-cmake -DFASTGPT_BLAS=OpenBLAS .
-make
-time OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 ./gpt2
+cmake -DFASTGPT_BLAS=OpenBLAS -Bbuild
+cmake --build build --parallel --clean-first
+ctest --test-dir build -V
 
-rm gpt2
+rm build/gpt2
 python pt.py

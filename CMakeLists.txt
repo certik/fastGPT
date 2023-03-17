@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.13 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.13...3.26)
+# CMake 3.15+ makes finding Python more robust
 
 set(CMAKE_USER_MAKE_RULES_OVERRIDE ${CMAKE_SOURCE_DIR}/cmake/UserOverride.cmake)
 
@@ -76,7 +77,35 @@ elseif (FASTGPT_BLAS STREQUAL "OpenBLAS")
         "$<IF:$<BOOL:${OMP_FOUND}>,p::omp,OpenMP::OpenMP_Fortran>")
 endif()
 
+
 file(GENERATE OUTPUT .gitignore CONTENT "*")
+
+# --- Python tests ---≈)
+
+set(Python_FIND_VIRTUALENV ONLY) # helps ensure conda environment required in README.md is used
+find_package(Python COMPONENTS Interpreter)
+if(Python_FOUND)
+
+add_test(NAME create_model
+  COMMAND Python::Interpreter ${CMAKE_CURRENT_SOURCE_DIR}/create_model.py --models_dir "${CMAKE_CURRENT_SOURCE_DIR}/gpt2/models" --model_size "124M")
+set_property(TEST create_model PROPERTY FIXTURES_SETUP create_model)
+
+add_test(NAME encode_input
+  COMMAND Python::Interpreter ${CMAKE_CURRENT_SOURCE_DIR}/encode_input.py "Alan Turing theorized that computers would one day become very powerful, but even he could not imagine" -n 20)
+set_property(TEST encode_input PROPERTY FIXTURES_SETUP encode_input)
+set_property(TEST encode_input PROPERTY FIXTURES_REQUIRED create_model)
+
+elseif(CMAKE_VERSION VERSION_LESS 3.15)
+    message(WARNING "Please use CMake >= 3.15 for better Python support")
+endif()
+
+add_test(NAME gpt2 COMMAND gpt2)
+set_property(TEST gpt2 PROPERTY FIXTURES_REQUIRED encode_input)
+if(FASTGPT_BLAS STREQUAL "OpenBLAS")
+    set_property(TEST gpt2 PROPERTY ENVIRONMENT "OPENBLAS_NUM_THREADS=1;OMP_NUM_THREADS=1")
+endif()
+
+# --- wrap up ---
 
 message("\n")
 message("Configuration results")
