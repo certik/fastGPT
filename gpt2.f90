@@ -238,15 +238,16 @@ integer :: next_id
 integer, allocatable :: input2(:)
 logical :: use_kv_cache
 real(sp) :: kv_cache(n_embd,n_seq+n_tokens_to_generate,2,n_layer)
-allocate(input2(size(input)))
-input2 = input
+allocate(input2(n_seq + n_tokens_to_generate))
+input2(:n_seq) = input
+
 do i = 1, n_tokens_to_generate
     if (use_cache) then
         use_kv_cache = (i > 1) ! Use cache for subsequent tokens
     else
         use_kv_cache = .false.
     end if
-    n_seq2 = size(input2)
+    n_seq2 = n_seq + i - 1
     if (use_kv_cache) then
         n_seq_x = 1
     else
@@ -254,16 +255,16 @@ do i = 1, n_tokens_to_generate
     end if
     allocate(logits(n_vocab, n_seq_x))
     logits = gpt2(n_vocab, n_ctx, n_seq2, n_seq_x, n_embd, n_layer, n_head, &
-            input2, &
+            input2(:n_seq + i - 1), &
             wte, wpe, &
             mlp_fc_w, mlp_fc_b, mlp_proj_w, mlp_proj_b, &
             attn_w, attn_b, attn_proj_w, attn_proj_b, &
             ln1_g, ln1_b, ln2_g, ln2_b, lnf_g, lnf_b, use_kv_cache, kv_cache(:,:n_seq2,:,:))
     next_id = maxloc(logits(:,n_seq_x), dim=1)-1
     print *, i, next_id
-    input2 = [input2, next_id]
+    input2(n_seq + i) = next_id
     deallocate(logits)
-end do
+ end do
 output = input2(n_seq+1:)
 end function
 

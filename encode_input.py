@@ -43,6 +43,7 @@ import numpy as np
 import json
 import os
 import regex as re
+from datasets import load_dataset
 
 def bytes_to_unicode():
     bs = list(range(ord("!"), ord("~") + 1)) + list(range(ord("¡"), ord("¬") + 1)) + list(range(ord("®"), ord("ÿ") + 1))
@@ -132,14 +133,14 @@ def get_encoder():
     return Encoder(encoder=encoder, bpe_merges=bpe_merges)
 
 def main(prompt: str, n_tokens_to_generate: int = 40):
+    test_dataset = load_dataset("lambada", "plain_text", split="test")
     encoder = get_encoder()
-    input_ids = np.array(encoder.encode(prompt), dtype=np.int32)
-
-    print("Saving the input into `input.dat`")
-    g = open("input.dat", "w")
-    np.array([len(input_ids), n_tokens_to_generate], dtype=np.int32).tofile(g)
-    input_ids.tofile(g)
-    print(input_ids)
+    with open("input.dat", "w") as f:
+        for i, prompt in enumerate(test_dataset["text"]):
+            input_ids = np.array(encoder.encode(prompt), dtype=np.int32)
+            # Write two lines
+            np.array([len(input_ids), n_tokens_to_generate], dtype=np.int32).tofile(f)        
+            input_ids.tofile(f)
 
 if __name__ == "__main__":
     import fire

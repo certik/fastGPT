@@ -42,6 +42,9 @@ elseif (FASTGPT_BLAS STREQUAL "OpenBLAS")
 else()
     # pass
 endif()
+# Coarray support
+find_package(Coarray REQUIRED)
+find_package(Threads REQUIRED)
 
 enable_testing()
 
@@ -68,6 +71,7 @@ else()
     )
 endif()
 add_executable(gpt2 ${SRC})
+
 if (FASTGPT_BLAS STREQUAL "Accelerate")
     target_link_options(gpt2 PRIVATE -framework accelerate)
     target_link_libraries(gpt2 PRIVATE "$<IF:$<BOOL:${OMP_FOUND}>,p::omp,OpenMP::OpenMP_Fortran>")
@@ -75,6 +79,8 @@ elseif (FASTGPT_BLAS STREQUAL "OpenBLAS")
     target_link_libraries(gpt2 p::openblas
         "$<IF:$<BOOL:${OMP_FOUND}>,p::omp,OpenMP::OpenMP_Fortran>")
 endif()
+target_compile_options(gpt2 PRIVATE ${Coarray_COMPILE_OPTIONS})
+target_link_libraries(gpt2 PRIVATE ${Coarray_LIBRARIES})
 
 file(GENERATE OUTPUT .gitignore CONTENT "*")
 
