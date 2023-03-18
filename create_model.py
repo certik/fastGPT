@@ -218,6 +218,7 @@ def main(model_size: str = "124M", models_dir: str = "models"):
     # load encoder, hparams, and params from the released open-ai gpt-2 files
     t1 = clock()
     hparams, params = load_encoder_hparams_and_params(model_size, models_dir)
+    print(hparams)
     decoder = load_decoder(os.path.join(models_dir, model_size, "encoder.json"))
     t2 = clock()
     print("  Done. Loading time: ", t2-t1)
@@ -228,6 +229,7 @@ def main(model_size: str = "124M", models_dir: str = "models"):
     decoder_txt = "".join(decoder)
     idx = decoder_idx(decoder)
     byte_decoder = bytes_to_unicode()
+
     convert(params, hparams["n_head"], hparams["n_ctx"], idx, decoder_txt, byte_decoder)
     t2 = clock()
     print("  Done. Time: ", t2-t1)

@@ -261,7 +261,7 @@ do i = 1, n_tokens_to_generate
             attn_w, attn_b, attn_proj_w, attn_proj_b, &
             ln1_g, ln1_b, ln2_g, ln2_b, lnf_g, lnf_b, use_kv_cache, kv_cache(:,:n_seq2,:,:))
     next_id = maxloc(logits(:,n_seq_x), dim=1)-1
-    print *, i, next_id
+    ! print *, i, next_id
     input2(n_seq + i) = next_id
     deallocate(logits)
  end do

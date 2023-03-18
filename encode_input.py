@@ -132,15 +132,22 @@ def get_encoder():
     bpe_merges = [tuple(merge_str.split()) for merge_str in bpe_data.split("\n")[1:-1]]
     return Encoder(encoder=encoder, bpe_merges=bpe_merges)
 
-def main(prompt: str, n_tokens_to_generate: int = 40):
+def main(prompt:str, l_prompts: int = 20, n_tokens_to_generate: int = 40):
     test_dataset = load_dataset("lambada", "plain_text", split="test")
     encoder = get_encoder()
     with open("input.dat", "w") as f:
-        for i, prompt in enumerate(test_dataset["text"]):
-            input_ids = np.array(encoder.encode(prompt), dtype=np.int32)
-            # Write two lines
-            np.array([len(input_ids), n_tokens_to_generate], dtype=np.int32).tofile(f)        
-            input_ids.tofile(f)
+            if(len(prompt) == 0):
+                input_count = len(test_dataset["text"][:l_prompts])
+                np.array([input_count], dtype=np.int32).tofile(f)
+                for i, prompt in enumerate(test_dataset["text"][:l_prompts]):
+                    input_ids = np.array(encoder.encode(prompt), dtype=np.int32)
+                    np.array([len(input_ids), n_tokens_to_generate], dtype=np.int32).tofile(f)        
+                    input_ids.tofile(f)
+            else:
+                input_ids = np.array(encoder.encode(prompt), dtype=np.int32)
+                np.array([len(input_ids), n_tokens_to_generate], dtype=np.int32).tofile(f)
+                input_ids.tofile(f)
+                print(input_ids)                
 
 if __name__ == "__main__":
     import fire
