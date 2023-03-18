@@ -19,7 +19,6 @@ program gpt2
                             lnf_b(:), lnf_g(:)
    character, allocatable :: decoder_txt(:)
    integer, allocatable :: output(:)
-   character(:), allocatable :: output_txt
    real(dp) :: t1, t2, t1o, t2o
    integer :: u, i, total_input, chunk, start, end_, dummy, j, w, stat
    logical :: use_cache, exists
