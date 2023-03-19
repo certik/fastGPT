@@ -316,38 +316,29 @@ do
 end do
 end function
 
-function encode(input, idx, decoder_txt, byte_decoder) result(tokens)
+function encode(input, idx, decoder_txt, byte_encoder) result(tokens)
 character(*), intent(in) :: input
-integer, intent(in) :: idx(0:), byte_decoder(0:)
+integer, intent(in) :: idx(0:), byte_encoder(0:)
 character, intent(in) :: decoder_txt(:)
 integer, allocatable :: tokens(:)
 character(:), allocatable :: output
-character(:), allocatable :: output2, tmp
-integer :: i, c, d
+character(:), allocatable :: output2, tmp, tmp2, tmp3
+integer :: i, j, c, d
 i = 1
 do
     tmp = next_token(input, i)
     if (tmp == "") exit
-end do
-
-allocate(character(0) :: output2) ! Fix GFortran warning
-output2 = ""
-do i = 1, size(tokens)
-    output2 = output2 // c2s(decoder_txt(idx(tokens(i))+1:idx(tokens(i)+1)))
-end do
-i = 1
-output = ""
-do
-    c = iachar(output2(i:i))
-    if (c >= 128) then
-        i = i + 1
-        d = iachar(output2(i:i))
-        c = ior(ishft(iand(c, 31), 6), iand(d, 63))
-    end if
-    tmp = achar(byte_decoder(c))
-    output = output // tmp
-    if (i == len(output2)) exit
-    i = i + 1
+    ! TODO: Encode utf-8 here
+    allocate(character(len(tmp)) :: tmp2)
+    do j = 1, len(tmp)
+        c = iachar(tmp(i:i))
+        tmp2(i:i) = achar(byte_encoder(c))
+    end do
+    ! TODO: split tmp2 into BPE tokens
+    tmp3 = tmp2
+    ! TODO: lookup tmp3 in decoder_txt, find the index
+    ! TODO: 
+    deallocate(tmp2)
 end do
 end function
 
