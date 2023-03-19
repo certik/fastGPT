@@ -281,6 +281,41 @@ do i = 1, size(x)
 end do
 end function
 
+function next_token(input, i) result(y)
+character(*), intent(in) :: input
+integer, intent(inout) :: i
+character(:), allocatable :: y
+if (i > len(input)) then
+    y = ""
+else if (input(i:i) == " ") then
+    y = tokenize_word(input, i)
+else if (input(i:i) == "," .or. input(i:i) == ".") then
+    y = input(i:i)
+    i = i + 1
+else
+    error stop "Input token not supported"
+end if
+end function
+
+function tokenize_word(input, i) result(y)
+character(*), intent(in) :: input
+integer, intent(inout) :: i
+character(:), allocatable :: y
+integer :: i0
+i0 = i
+do
+    if (i > len(input)) then
+        y = input(i0:i-1)
+        exit
+    end if
+    if (input(i:i) == " " .or. input(i:i) == "," .or. input(i:i) == ".") then
+        y = input(i0:i-1)
+        exit
+    end if
+    i = i + 1
+end do
+end function
+
 function encode(input, idx, decoder_txt, byte_decoder) result(tokens)
 character(*), intent(in) :: input
 integer, intent(in) :: idx(0:), byte_decoder(0:)
@@ -289,6 +324,12 @@ integer, allocatable :: tokens(:)
 character(:), allocatable :: output
 character(:), allocatable :: output2, tmp
 integer :: i, c, d
+i = 1
+do
+    tmp = next_token(input, i)
+    if (tmp == "") exit
+end do
+
 allocate(character(0) :: output2) ! Fix GFortran warning
 output2 = ""
 do i = 1, size(tokens)
