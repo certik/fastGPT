@@ -316,15 +316,31 @@ do
 end do
 end function
 
+function word_to_token(word, idx, decoder_txt) result(token)
+character(*), intent(in) :: word
+integer, intent(in) :: idx(0:)
+character, intent(in) :: decoder_txt(:)
+integer :: token
+integer :: i
+! This is O(n) search instead of O(1) lookup in a dictionary, so it is slow
+do i = 1, size(idx)
+    if (c2s(decoder_txt(idx(i)+1:idx(i+1))) == word) then
+        token = i
+        exit
+    end if
+end do
+error stop "Word not found in decoder_txt"
+end function
+
 function encode(input, idx, decoder_txt, byte_encoder) result(tokens)
 character(*), intent(in) :: input
 integer, intent(in) :: idx(0:), byte_encoder(0:)
 character, intent(in) :: decoder_txt(:)
 integer, allocatable :: tokens(:)
-character(:), allocatable :: output
-character(:), allocatable :: output2, tmp, tmp2, tmp3
-integer :: i, j, c, d
+character(:), allocatable :: tmp, tmp2, tmp3
+integer :: i, j, c
 i = 1
+allocate(tokens(0))
 do
     tmp = next_token(input, i)
     if (tmp == "") exit
@@ -336,8 +352,7 @@ do
     end do
     ! TODO: split tmp2 into BPE tokens
     tmp3 = tmp2
-    ! TODO: lookup tmp3 in decoder_txt, find the index
-    ! TODO: 
+    tokens = [tokens, word_to_token(tmp3, idx, decoder_txt)]
     deallocate(tmp2)
 end do
 end function
