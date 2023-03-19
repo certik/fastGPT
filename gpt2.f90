@@ -393,7 +393,7 @@ character, intent(in) :: decoder_txt(:)
 integer, allocatable :: tokens(:)
 character(:), allocatable :: tmp, tmp2
 type(string), allocatable :: bpe_tokens(:)
-integer :: i, j, c, d
+integer :: i, j, c
 i = 1
 allocate(tokens(0))
 do
@@ -421,7 +421,7 @@ integer, intent(in) :: tokens(:), idx(0:), byte_decoder(0:)
 character, intent(in) :: decoder_txt(:)
 character(:), allocatable :: output
 character(:), allocatable :: output2, tmp
-integer :: i, c, d
+integer :: i, c
 allocate(character(0) :: output2) ! Fix GFortran warning
 output2 = ""
 do i = 1, size(tokens)
