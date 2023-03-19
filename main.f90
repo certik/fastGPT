@@ -28,6 +28,9 @@ logical :: use_cache
 print "(a)", "Loading the model..."
 call cpu_time(t1)
 open(newunit=u, file="model.dat", form="unformatted", access="stream", status="old")
+!read(u) model_version
+!                    fastGPT (digits look similar to the letters they represent)
+! model_version /= 0xfa51697
 read(u) n_vocab, n_ctx, n_embd, n_layer, n_head, n_decoder_idx, n_decoder_txt, &
     n_byte_decoder
 allocate(wte(n_embd,n_vocab), wpe(n_embd,n_ctx), &
