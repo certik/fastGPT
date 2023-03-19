@@ -373,6 +373,7 @@ end if
 end function
 
 function bpe(token) result(tokens)
+! Takes a token as a string, and returns bpe tokens as an array of strings
 character(*), intent(in) :: token
 type(string), allocatable :: tokens(:)
 type(string) :: s, s2
