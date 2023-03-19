@@ -337,6 +337,7 @@ token = 0
 end function
 
 subroutine codepoint_to_utf8(s, c)
+! UTF-32 -> UTF-8
 character(:), allocatable, intent(inout) :: s
 integer, intent(in) :: c
 integer :: d1, d2
@@ -350,6 +351,19 @@ else
     error stop "UTF-32 range not supported"
 end if
 end subroutine
+
+function utf8_to_codepoint(s, i) result(c)
+! UTF-8 -> UTF-32
+character(*), intent(in) :: s
+integer, intent(inout) :: i
+integer :: c, d
+c = iachar(s(i:i))
+if (c >= 128) then
+    i = i + 1
+    d = iachar(s(i:i))
+    c = ior(ishft(iand(c, 31), 6), iand(d, 63))
+end if
+end function
 
 function encode(input, idx, decoder_txt, byte_encoder) result(tokens)
 character(*), intent(in) :: input
@@ -398,14 +412,9 @@ end do
 i = 1
 output = ""
 do
-    c = iachar(output2(i:i))
     ! Decode UTF-8 (one or more bytes) to UTF-32 code point (always 4 bytes),
     ! However for GPT-2 it seems only range 0-323 is used from UTF-32.
-    if (c >= 128) then
-        i = i + 1
-        d = iachar(output2(i:i))
-        c = ior(ishft(iand(c, 31), 6), iand(d, 63))
-    end if
+    c = utf8_to_codepoint(output2, i)
     ! [0,324] -> [0,255]
     if (c < 0 .or. c > ubound(byte_decoder,1)) error stop "Codepoint out of range for byte decoder"
     tmp = achar(byte_decoder(c))
