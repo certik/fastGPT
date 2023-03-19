@@ -1,5 +1,5 @@
 program gpt2
-use gpt2_mod, only: generate, decode
+use gpt2_mod, only: generate, encode, decode
 use omp, only: omp_get_wtime
 implicit none
 
@@ -9,6 +9,7 @@ integer, parameter :: dp = kind(0.d0)
 integer :: n_vocab, n_ctx, n_seq, n_embd, n_layer, n_head, &
     n_tokens_to_generate, n_decoder_idx, n_decoder_txt, n_byte_decoder
 integer, allocatable :: input(:), decoder_idx(:), byte_decoder(:)
+integer :: byte_encoder(0:255)
 real(sp), allocatable :: wte(:,:), wpe(:,:), &
     mlp_fc_w(:,:,:), mlp_fc_b(:,:), &
     mlp_proj_w(:,:,:), mlp_proj_b(:,:), &
@@ -85,6 +86,16 @@ print "(a)", "Input tokens:"
 print "(1000(i6))", input
 print "(a)", "Decoded input as text:"
 print "(a)", decode(input, decoder_idx, decoder_txt, byte_decoder)
+output_txt = decode(input, decoder_idx, decoder_txt, byte_decoder)
+
+print *, "Encoded tokens"
+byte_encoder = 0
+do i = 1, size(byte_decoder)
+    byte_encoder(byte_decoder(i)) = i
+end do
+input = encode(output_txt, decoder_idx, decoder_txt, byte_encoder)
+print *, input
+
 
 allocate(output(n_tokens_to_generate))
 print "(a)", "Running model..."
