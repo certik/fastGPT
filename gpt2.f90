@@ -361,7 +361,7 @@ integer, intent(in) :: idx(0:), byte_encoder(0:)
 character, intent(in) :: decoder_txt(:)
 integer, allocatable :: tokens(:)
 character(:), allocatable :: tmp, tmp2, tmp3
-integer :: i, j, c, c2
+integer :: i, j, c, d
 i = 1
 allocate(tokens(0))
 do
@@ -374,16 +374,18 @@ do
     tmp2 = ""
     do j = 1, len(tmp)
         c = iachar(tmp(j:j))
-        c2 = byte_encoder(c)
-        ! Convert c2 to utf-8:
-        if (c2 < 128) then
-            tmp2 = tmp2 // achar(c2)
+        c = byte_encoder(c)
+        ! c2 is UTF-32 (4 bytes), but only the range [0, 324] is used
+        ! Convert c2 from UTF-32 to UTF-8. Due to the limited range
+        ! either one or two bytes of UTF-8 are appended to tmp2:
+        if (c < 128) then
+            tmp2 = tmp2 // achar(c)
+        else if (c < 2048) then
+            d = iand(ior(c, 128), 191)
+            c = ior(ishft(c, -6), 192)
+            tmp2 = tmp2 // char(c) // char(d)
         else
-            if (c2 == 288) then
-                tmp2 = tmp2 // char(196) // char(160)
-            else
-                error stop "utf8 not supported"
-            end if
+            error stop "UTF-32 range not supported"
         end if
     end do
     !print *, tmp2
