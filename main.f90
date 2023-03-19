@@ -105,6 +105,8 @@ print *, "Encoded tokens"
 input = encode(output_txt, decoder_idx, decoder_txt, byte_encoder)
 print *, input
 
+stop
+
 allocate(output(n_tokens_to_generate))
 print "(a)", "Running model..."
 call cpu_time(t1)
