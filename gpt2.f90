@@ -281,6 +281,35 @@ do i = 1, size(x)
 end do
 end function
 
+function encode(input, idx, decoder_txt, byte_decoder) result(tokens)
+character(*), intent(in) :: input
+integer, intent(in) :: idx(0:), byte_decoder(0:)
+character, intent(in) :: decoder_txt(:)
+integer, allocatable :: tokens(:)
+character(:), allocatable :: output
+character(:), allocatable :: output2, tmp
+integer :: i, c, d
+allocate(character(0) :: output2) ! Fix GFortran warning
+output2 = ""
+do i = 1, size(tokens)
+    output2 = output2 // c2s(decoder_txt(idx(tokens(i))+1:idx(tokens(i)+1)))
+end do
+i = 1
+output = ""
+do
+    c = iachar(output2(i:i))
+    if (c >= 128) then
+        i = i + 1
+        d = iachar(output2(i:i))
+        c = ior(ishft(iand(c, 31), 6), iand(d, 63))
+    end if
+    tmp = achar(byte_decoder(c))
+    output = output // tmp
+    if (i == len(output2)) exit
+    i = i + 1
+end do
+end function
+
 function decode(tokens, idx, decoder_txt, byte_decoder) result(output)
 integer, intent(in) :: tokens(:), idx(0:), byte_decoder(0:)
 character, intent(in) :: decoder_txt(:)
