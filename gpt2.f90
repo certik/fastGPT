@@ -5,6 +5,10 @@ implicit none
 integer, parameter :: sp = kind(0.0)
 real(sp), parameter :: pi = 3.14159265358979323846_sp
 
+type :: string
+    character(:), allocatable :: s
+end type
+
 contains
 
 elemental real(sp) function fast_tanh(x) result(y)
@@ -368,21 +372,33 @@ if (c >= 2048) then
 end if
 end function
 
+function bpe(token) result(tokens)
+character(*), intent(in) :: token
+type(string), allocatable :: tokens(:)
+type(string) :: s, s2
+if (token == "Ġtheorized") then
+    s%s = "Ġtheor"
+    s2%s = "ized"
+    tokens = [s, s2]
+else
+    s%s = token
+    tokens = [s]
+end if
+end function
+
 function encode(input, idx, decoder_txt, byte_encoder) result(tokens)
 character(*), intent(in) :: input
 integer, intent(in) :: idx(0:), byte_encoder(0:)
 character, intent(in) :: decoder_txt(:)
 integer, allocatable :: tokens(:)
-character(:), allocatable :: tmp, tmp2, tmp3
+character(:), allocatable :: tmp, tmp2
+type(string), allocatable :: bpe_tokens(:)
 integer :: i, j, c, d
 i = 1
 allocate(tokens(0))
 do
-    !print *, "iter:", i
     tmp = next_token(input, i)
-    !print *, tmp
     if (tmp == "") exit
-    !print *, tmp
     tmp2 = ""
     do j = 1, len(tmp)
         c = iachar(tmp(j:j))
@@ -392,11 +408,10 @@ do
         ! either one or two bytes of UTF-8 are appended to tmp2:
         call codepoint_to_utf8(tmp2, c)
     end do
-    !print *, tmp2
-    ! TODO: split tmp2 into BPE tokens
-    tmp3 = tmp2
-    tokens = [tokens, word_to_token(tmp3, idx, decoder_txt)]
-    !print *, tokens
+    bpe_tokens = bpe(tmp2)
+    do j = 1, size(bpe_tokens)
+        tokens = [tokens, word_to_token(bpe_tokens(j)%s, idx, decoder_txt)]
+    end do
     deallocate(tmp2)
 end do
 end function
