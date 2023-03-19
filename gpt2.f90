@@ -219,8 +219,6 @@ function generate(n_tokens_to_generate, &
         attn_w, attn_b, attn_proj_w, attn_proj_b, &
         ln1_g, ln1_b, ln2_g, ln2_b, lnf_g, lnf_b, use_cache, &
         decoder_idx, decoder_txt, byte_decoder) result(output)
-integer, intent(in) :: decoder_idx(:), byte_decoder(:)
-character, intent(in) :: decoder_txt(:)
 integer, intent(in) :: n_vocab, n_ctx, n_seq, n_embd, n_layer, n_head, &
     n_tokens_to_generate
 integer, intent(in) :: input(n_seq)
@@ -233,6 +231,8 @@ real(sp), intent(in) :: wte(n_embd,n_vocab), wpe(n_embd,n_ctx), &
     ln2_b(n_embd,n_layer), ln2_g(n_embd,n_layer), &
     lnf_b(n_embd), lnf_g(n_embd)
 logical, intent(in) :: use_cache
+integer, intent(in) :: decoder_idx(:), byte_decoder(:)
+character, intent(in) :: decoder_txt(:)
 integer :: output(n_tokens_to_generate)
 real(sp), allocatable :: logits(:,:)
 integer :: i
