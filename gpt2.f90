@@ -375,6 +375,7 @@ do
     do j = 1, len(tmp)
         c = iachar(tmp(j:j))
         c2 = byte_encoder(c)
+        ! Convert c2 to utf-8:
         if (c2 < 128) then
             tmp2 = tmp2 // achar(c2)
         else
