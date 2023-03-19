@@ -43,7 +43,7 @@ allocate(wte(n_embd,n_vocab), wpe(n_embd,n_ctx), &
     ln2_b(n_embd,n_layer), ln2_g(n_embd,n_layer), &
     lnf_b(n_embd), lnf_g(n_embd), &
     decoder_idx(n_decoder_idx), decoder_txt(n_decoder_txt), &
-    byte_decoder(n_byte_decoder))
+    byte_decoder(0:n_byte_decoder-1))
 read(u) wte, wpe, &
     mlp_fc_w, mlp_fc_b, &
     mlp_proj_w, mlp_proj_b, &
@@ -56,6 +56,17 @@ read(u) wte, wpe, &
 close(u)
 call cpu_time(t2)
 print "(a,f8.3,a)", "    done. Time:", t2-t1, "s"
+
+! TODO: save byte_encoder in the model.dat file:
+byte_encoder = 0
+do i = 0, size(byte_decoder)-1
+    byte_encoder(byte_decoder(i)) = i
+end do
+! And compute byte_decoder from it:
+byte_decoder = 0
+do i = 0, size(byte_encoder)-1
+    byte_decoder(byte_encoder(i)) = i
+end do
 
 ! Load the input
 open(newunit=u, file="input.dat", form="unformatted", access="stream", status="old")
@@ -90,11 +101,6 @@ output_txt = decode(input, decoder_idx, decoder_txt, byte_decoder)
 print "(a)", output_txt
 
 print *, "Encoded tokens"
-byte_encoder = 0
-do i = 1, size(byte_decoder)
-    byte_encoder(byte_decoder(i)) = i-1
-end do
-!byte_encoder(32) = ichar("Ġ")
 input = encode(output_txt, decoder_idx, decoder_txt, byte_encoder)
 print *, input
 
