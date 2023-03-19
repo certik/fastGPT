@@ -326,10 +326,10 @@ character, intent(in) :: decoder_txt(:)
 integer :: token
 integer :: i
 ! This is O(n) search instead of O(1) lookup in a dictionary, so it is slow
-do i = 0, size(idx)-2
+do i = 0, ubound(idx,1)-1
     if (c2s(decoder_txt(idx(i)+1:idx(i+1))) == word) then
         token = i
-        exit
+        return
     end if
 end do
 token = 0
@@ -365,12 +365,12 @@ integer :: i, j, c, c2
 i = 1
 allocate(tokens(0))
 do
-    print *, "iter:", i
+    !print *, "iter:", i
     tmp = next_token(input, i)
-    print *, tmp
+    !print *, tmp
     if (tmp == "") exit
     tmp = encode_utf8(tmp)
-    print *, tmp
+    !print *, tmp
     tmp2 = ""
     do j = 1, len(tmp)
         c = iachar(tmp(j:j))
@@ -385,11 +385,11 @@ do
             end if
         end if
     end do
-    print *, tmp2
+    !print *, tmp2
     ! TODO: split tmp2 into BPE tokens
     tmp3 = tmp2
     tokens = [tokens, word_to_token(tmp3, idx, decoder_txt)]
-    print *, tokens
+    !print *, tokens
     deallocate(tmp2)
 end do
 end function
