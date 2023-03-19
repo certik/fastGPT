@@ -376,7 +376,7 @@ do
         c = iachar(tmp(j:j))
         c = byte_encoder(c)
         ! c2 is UTF-32 (4 bytes), but only the range [0, 324] is used
-        ! Convert c2 from UTF-32 to UTF-8. Due to the limited range
+        ! Encode c2 from UTF-32 to UTF-8. Due to the limited range
         ! either one or two bytes of UTF-8 are appended to tmp2:
         if (c < 128) then
             tmp2 = tmp2 // achar(c)
