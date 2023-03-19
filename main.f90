@@ -103,7 +103,7 @@ print "(a)", output_txt
 
 print *, "Encoded tokens"
 input = encode(output_txt, decoder_idx, decoder_txt, byte_encoder)
-print *, input
+print "(1000(i6))", input
 
 stop
 
