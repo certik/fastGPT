@@ -241,10 +241,8 @@ integer :: next_id
 integer, allocatable :: input2(:)
 logical :: use_kv_cache
 real(sp) :: kv_cache(n_embd,n_seq+n_tokens_to_generate,2,n_layer)
-character(:), allocatable :: txt1, txt2
 allocate(input2(size(input)))
 input2 = input
-txt1 = decode(input2, decoder_idx, decoder_txt, byte_decoder)
 do i = 1, n_tokens_to_generate
     if (use_cache) then
         use_kv_cache = (i > 1) ! Use cache for subsequent tokens
@@ -265,10 +263,8 @@ do i = 1, n_tokens_to_generate
             attn_w, attn_b, attn_proj_w, attn_proj_b, &
             ln1_g, ln1_b, ln2_g, ln2_b, lnf_g, lnf_b, use_kv_cache, kv_cache(:,:n_seq2,:,:))
     next_id = maxloc(logits(:,n_seq_x), dim=1)-1
+    write(*, fmt="(a)", advance="no") decode([next_id], decoder_idx, decoder_txt, byte_decoder)
     input2 = [input2, next_id]
-    txt2 = decode(input2, decoder_idx, decoder_txt, byte_decoder)
-    write(*, fmt="(a)", advance="no") txt2(len(txt1)+1:)
-    txt1 = txt2
     deallocate(logits)
 end do
 output = input2(n_seq+1:)
