@@ -293,7 +293,7 @@ else if (input(i:i) == "," .or. input(i:i) == ".") then
     y = input(i:i)
     i = i + 1
 else
-    error stop "Input token not supported"
+    y = tokenize_word(input, i)
 end if
 end function
 
@@ -303,6 +303,9 @@ integer, intent(inout) :: i
 character(:), allocatable :: y
 integer :: i0
 i0 = i
+if (input(i:i) == " ") then
+    i = i + 1
+end if
 do
     if (i > len(input)) then
         y = input(i0:i-1)
@@ -323,13 +326,14 @@ character, intent(in) :: decoder_txt(:)
 integer :: token
 integer :: i
 ! This is O(n) search instead of O(1) lookup in a dictionary, so it is slow
-do i = 1, size(idx)
+do i = 0, size(idx)-2
     if (c2s(decoder_txt(idx(i)+1:idx(i+1))) == word) then
         token = i
         exit
     end if
 end do
-error stop "Word not found in decoder_txt"
+token = 0
+!error stop "Word not found in decoder_txt"
 end function
 
 function encode(input, idx, decoder_txt, byte_encoder) result(tokens)
@@ -347,8 +351,8 @@ do
     ! TODO: Encode utf-8 here
     allocate(character(len(tmp)) :: tmp2)
     do j = 1, len(tmp)
-        c = iachar(tmp(i:i))
-        tmp2(i:i) = achar(byte_encoder(c))
+        c = iachar(tmp(j:j))
+        tmp2(j:j) = achar(byte_encoder(c-1))
     end do
     ! TODO: split tmp2 into BPE tokens
     tmp3 = tmp2
