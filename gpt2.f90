@@ -336,24 +336,20 @@ token = 0
 !error stop "Word not found in decoder_txt"
 end function
 
-function encode_utf8(input) result(output)
-character(*), intent(in) :: input
-character(:), allocatable :: output
-integer :: i, c
-output = ""
-do i = 1, len(input)
-    c = ichar(input(i:i))
-    if (c > 128) then
-        if (c == 288) then
-            output = output // char(196) // char(160)
-        else
-            error stop "utf8 not supported"
-        end if
-    else
-        output = output // input(i:i)
-    end if
-end do
-end function
+subroutine codepoint_to_utf8(s, c)
+character(:), allocatable, intent(inout) :: s
+integer, intent(in) :: c
+integer :: d1, d2
+if (c < 128) then
+    s = s // achar(c)
+else if (c < 2048) then
+    d1 = ior(ishft(c, -6), 192)
+    d2 = iand(ior(c, 128), 191)
+    s = s // achar(d1) // achar(d2)
+else
+    error stop "UTF-32 range not supported"
+end if
+end subroutine
 
 function encode(input, idx, decoder_txt, byte_encoder) result(tokens)
 character(*), intent(in) :: input
@@ -369,24 +365,15 @@ do
     tmp = next_token(input, i)
     !print *, tmp
     if (tmp == "") exit
-    tmp = encode_utf8(tmp)
     !print *, tmp
     tmp2 = ""
     do j = 1, len(tmp)
         c = iachar(tmp(j:j))
         c = byte_encoder(c)
-        ! c2 is UTF-32 (4 bytes), but only the range [0, 324] is used
-        ! Encode c2 from UTF-32 to UTF-8. Due to the limited range
+        ! c is UTF-32 (4 bytes), but only the range [0, 324] is used
+        ! Encode c from UTF-32 to UTF-8. Due to the limited range
         ! either one or two bytes of UTF-8 are appended to tmp2:
-        if (c < 128) then
-            tmp2 = tmp2 // achar(c)
-        else if (c < 2048) then
-            d = iand(ior(c, 128), 191)
-            c = ior(ishft(c, -6), 192)
-            tmp2 = tmp2 // char(c) // char(d)
-        else
-            error stop "UTF-32 range not supported"
-        end if
+        call codepoint_to_utf8(tmp2, c)
     end do
     !print *, tmp2
     ! TODO: split tmp2 into BPE tokens
