@@ -363,6 +363,9 @@ if (c >= 128) then
     d = iachar(s(i:i))
     c = ior(ishft(iand(c, 31), 6), iand(d, 63))
 end if
+if (c >= 2048) then
+    error stop "UTF-8 range not supported"
+end if
 end function
 
 function encode(input, idx, decoder_txt, byte_encoder) result(tokens)
