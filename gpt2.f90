@@ -410,11 +410,14 @@ i = 1
 output = ""
 do
     c = iachar(output2(i:i))
+    ! Decode UTF-8 (one or more bytes) to UTF-32 code point (always 4 bytes),
+    ! However for GPT-2 it seems only range 0-323 is used from UTF-32.
     if (c >= 128) then
         i = i + 1
         d = iachar(output2(i:i))
         c = ior(ishft(iand(c, 31), 6), iand(d, 63))
     end if
+    ! [0,324] -> [0,255]
     tmp = achar(byte_decoder(c))
     output = output // tmp
     if (i == len(output2)) exit

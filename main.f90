@@ -85,8 +85,9 @@ print *
 print "(a)", "Input tokens:"
 print "(1000(i6))", input
 print "(a)", "Decoded input as text:"
-print "(a)", decode(input, decoder_idx, decoder_txt, byte_decoder)
+!print "(a)", decode(input, decoder_idx, decoder_txt, byte_decoder)
 output_txt = decode(input, decoder_idx, decoder_txt, byte_decoder)
+print "(a)", output_txt
 
 print *, "Encoded tokens"
 byte_encoder = 0
