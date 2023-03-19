@@ -418,6 +418,7 @@ do
         c = ior(ishft(iand(c, 31), 6), iand(d, 63))
     end if
     ! [0,324] -> [0,255]
+    if (c < 0 .or. c > ubound(byte_decoder,1)) error stop "Codepoint out of range for byte decoder"
     tmp = achar(byte_decoder(c))
     output = output // tmp
     if (i == len(output2)) exit
