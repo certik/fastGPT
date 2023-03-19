@@ -93,9 +93,11 @@ byte_encoder = 0
 do i = 1, size(byte_decoder)
     byte_encoder(byte_decoder(i)) = i-1
 end do
+!byte_encoder(32) = ichar("Ġ")
 input = encode(output_txt, decoder_idx, decoder_txt, byte_encoder)
 print *, input
 
+stop
 
 allocate(output(n_tokens_to_generate))
 print "(a)", "Running model..."

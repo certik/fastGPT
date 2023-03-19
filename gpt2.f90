@@ -336,27 +336,60 @@ token = 0
 !error stop "Word not found in decoder_txt"
 end function
 
+function encode_utf8(input) result(output)
+character(*), intent(in) :: input
+character(:), allocatable :: output
+integer :: i, c
+output = ""
+do i = 1, len(input)
+    c = ichar(input(i:i))
+    if (c > 128) then
+        if (c == 288) then
+            output = output // char(196) // char(160)
+        else
+            error stop "utf8 not supported"
+        end if
+    else
+        output = output // input(i:i)
+    end if
+end do
+end function
+
 function encode(input, idx, decoder_txt, byte_encoder) result(tokens)
 character(*), intent(in) :: input
 integer, intent(in) :: idx(0:), byte_encoder(0:)
 character, intent(in) :: decoder_txt(:)
 integer, allocatable :: tokens(:)
 character(:), allocatable :: tmp, tmp2, tmp3
-integer :: i, j, c
+integer :: i, j, c, c2
 i = 1
 allocate(tokens(0))
 do
+    print *, "iter:", i
     tmp = next_token(input, i)
+    print *, tmp
     if (tmp == "") exit
-    ! TODO: Encode utf-8 here
-    allocate(character(len(tmp)) :: tmp2)
+    tmp = encode_utf8(tmp)
+    print *, tmp
+    tmp2 = ""
     do j = 1, len(tmp)
         c = iachar(tmp(j:j))
-        tmp2(j:j) = achar(byte_encoder(c))
+        c2 = byte_encoder(c)
+        if (c2 < 128) then
+            tmp2 = tmp2 // achar(c2)
+        else
+            if (c2 == 288) then
+                tmp2 = tmp2 // char(196) // char(160)
+            else
+                error stop "utf8 not supported"
+            end if
+        end if
     end do
+    print *, tmp2
     ! TODO: split tmp2 into BPE tokens
     tmp3 = tmp2
     tokens = [tokens, word_to_token(tmp3, idx, decoder_txt)]
+    print *, tokens
     deallocate(tmp2)
 end do
 end function
