@@ -22,7 +22,7 @@ character, allocatable :: decoder_txt(:)
 integer, allocatable :: output(:)
 character(:), allocatable :: output_txt
 real(dp) :: t1, t2, t1o, t2o
-integer :: u
+integer :: u, i
 logical :: use_cache
 
 ! Load the model
@@ -91,7 +91,7 @@ output_txt = decode(input, decoder_idx, decoder_txt, byte_decoder)
 print *, "Encoded tokens"
 byte_encoder = 0
 do i = 1, size(byte_decoder)
-    byte_encoder(byte_decoder(i)) = i
+    byte_encoder(byte_decoder(i)) = i-1
 end do
 input = encode(output_txt, decoder_idx, decoder_txt, byte_encoder)
 print *, input

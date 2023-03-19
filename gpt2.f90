@@ -352,7 +352,7 @@ do
     allocate(character(len(tmp)) :: tmp2)
     do j = 1, len(tmp)
         c = iachar(tmp(j:j))
-        tmp2(j:j) = achar(byte_encoder(c-1))
+        tmp2(j:j) = achar(byte_encoder(c))
     end do
     ! TODO: split tmp2 into BPE tokens
     tmp3 = tmp2
