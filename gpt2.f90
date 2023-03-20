@@ -323,7 +323,7 @@ do
 end do
 end function
 
-function word_to_token(word, idx, decoder_txt) result(token)
+function word_idx(word, idx, decoder_txt) result(token)
 character(*), intent(in) :: word
 integer, intent(in) :: idx(0:)
 character, intent(in) :: decoder_txt(:)
@@ -336,8 +336,7 @@ do i = 0, ubound(idx,1)-1
         return
     end if
 end do
-token = 0
-!error stop "Word not found in decoder_txt"
+token = -1
 end function
 
 subroutine codepoint_to_utf8(s, c)
@@ -372,13 +371,61 @@ if (c >= 2048) then
 end if
 end function
 
+function merge_pair(intokens, idx) result(tokens)
+! Merge the pair `idx`
+type(string), intent(in) :: intokens(:)
+integer, intent(in) :: idx
+type(string), allocatable :: tokens(:)
+type(string) :: merged_token
+merged_token%s = intokens(idx)%s // intokens(idx+1)%s
+tokens = [intokens(:idx-1), merged_token, intokens(idx+2:)]
+end function
+
 function bpe(token, vocab_idx, vocab_txt) result(tokens)
 ! Takes a token as a string, and returns bpe tokens as an array of strings
 character(*), intent(in) :: token
 integer, intent(in) :: vocab_idx(0:)
 character, intent(in) :: vocab_txt(:)
 type(string), allocatable :: tokens(:)
+integer, allocatable :: pair_scores(:)
+integer :: not_found, merge_pair_idx
 type(string) :: s, s2
+integer :: i
+not_found = size(vocab_idx) + 10
+allocate(tokens(len(token)))
+do i = 1, len(token)
+    tokens(i)%s = token(i:i)
+end do
+! Merge all UTF-8 character pairs, for now hardwired
+if (token(1:2) == "Ġ") then
+    tokens = merge_pair(tokens, 1)
+end if
+
+do
+    print *, "tokens = ", (tokens(i)%s // " ", i=1,size(tokens))
+    if (size(tokens) == 1) then
+        ! The token pairs were either all merged into one word, or the input
+        ! token was a one character word, either way we are done:
+        exit
+    end if
+    allocate(pair_scores(size(tokens)-1))
+    ! Loop over pairs
+    do i = 1, size(tokens)-1
+        pair_scores(i) = word_idx(tokens(i)%s // " " // tokens(i+1)%s, vocab_idx, vocab_txt)
+        if (pair_scores(i) == -1) pair_scores(i) = not_found
+    end do
+    merge_pair_idx = minloc(pair_scores, 1)
+    if (pair_scores(merge_pair_idx) == not_found) then
+        ! No token pair can be merged, so we are done:
+        exit
+    end if
+    print *, pair_scores
+    print *, merge_pair_idx, pair_scores(merge_pair_idx)
+    tokens = merge_pair(tokens, merge_pair_idx)
+    deallocate(pair_scores)
+end do
+print *, "final tokens = ", (tokens(i)%s // " ", i=1,size(tokens))
+stop
 if (token == "Ġtheorized") then
     s%s = "Ġtheor"
     s2%s = "ized"
@@ -412,9 +459,10 @@ do
         ! either one or two bytes of UTF-8 are appended to tmp2:
         call codepoint_to_utf8(tmp2, c)
     end do
-    bpe_tokens = bpe(tmp2, vocab_idx, vocab_txt)
+    bpe_tokens = bpe("Ġtheorized", vocab_idx, vocab_txt)
+    stop
     do j = 1, size(bpe_tokens)
-        tokens = [tokens, word_to_token(bpe_tokens(j)%s, idx, decoder_txt)]
+        tokens = [tokens, word_idx(bpe_tokens(j)%s, idx, decoder_txt)]
     end do
     deallocate(tmp2)
 end do
