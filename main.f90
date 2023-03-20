@@ -22,10 +22,11 @@ real(sp), allocatable :: wte(:,:), wpe(:,:), &
 character, allocatable :: decoder_txt(:), vocab_txt(:)
 integer, allocatable :: output(:)
 character(:), allocatable :: output_txt, input_txt
+character(1024) :: input_txt2
 real(dp) :: t1, t2, t1o, t2o
-integer :: u, i
+integer :: u, i, ios
 logical :: use_cache
-namelist / input_fastGPT / n_tokens_to_generate, input_txt
+namelist / input_fastGPT / n_tokens_to_generate
 
 ! Load the model
 print "(a)", "Loading the model..."
@@ -78,11 +79,16 @@ do i = 0, size(byte_encoder)-1
 end do
 
 ! Load the input
-allocate(character(n_ctx) :: input_txt)
+allocate(character(0) :: input_txt)
+input_txt = ""
 open(newunit=u, file="input", status="old")
 read(u, input_fastGPT)
+do
+    read(u, "(a)", iostat=ios) input_txt2
+    if (ios /= 0) exit
+    input_txt = input_txt // char(10) // trim(input_txt2)
+end do
 close(u)
-input_txt = trim(input_txt)
 print "(a)", "Input text"
 print "(a)", input_txt
 
