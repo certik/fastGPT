@@ -113,7 +113,8 @@ def load_encoder_hparams_and_params(model_size, models_dir):
 
     return hparams, params
 
-def convert(params, n_head, n_ctx, idx, decoder_txt, byte_decoder):
+def convert(params, n_head, n_ctx, idx, decoder_txt,
+        vocab_idx, vocab_txt, byte_decoder):
     t1 = clock()
     blocks = params["blocks"]
     n_embd = blocks[0]["ln_1"]["b"].size
@@ -157,7 +158,8 @@ def convert(params, n_head, n_ctx, idx, decoder_txt, byte_decoder):
     # Save the model
     f = open("model.dat", "w")
     np.array([n_vocab, n_ctx, n_embd, n_layer, n_head,
-        len(idx),len(decoder_txt.encode("utf-8")),len(byte_decoder)], dtype=np.int32).tofile(f)
+        len(idx),len(decoder_txt.encode("utf-8")),
+        len(vocab_idx),len(vocab_txt.encode("utf-8")),len(byte_decoder)], dtype=np.int32).tofile(f)
     wte.tofile(f); wpe.tofile(f)
     mlp_fc_w.tofile(f); mlp_fc_b.tofile(f)
     mlp_proj_w.tofile(f); mlp_proj_b.tofile(f)
@@ -168,6 +170,8 @@ def convert(params, n_head, n_ctx, idx, decoder_txt, byte_decoder):
     lnf_b.tofile(f); lnf_g.tofile(f)
     idx.tofile(f)
     f.write(decoder_txt)
+    vocab_idx.tofile(f)
+    f.write(vocab_txt)
     byte_decoder.tofile(f)
 
     t2 = clock()
@@ -184,6 +188,12 @@ def load_decoder(filename):
         decoder.append(D2[i])
         i += 1
     return decoder
+
+def load_vocab(filename):
+    D = open(filename).read()
+    D = D.split("\n")
+    D = D[1:]
+    return D
 
 def decoder_idx(decoder):
     i = 0
@@ -219,6 +229,7 @@ def main(model_size: str = "124M", models_dir: str = "models"):
     t1 = clock()
     hparams, params = load_encoder_hparams_and_params(model_size, models_dir)
     decoder = load_decoder(os.path.join(models_dir, model_size, "encoder.json"))
+    vocab = load_vocab(os.path.join(models_dir, model_size, "vocab.bpe"))
     t2 = clock()
     print("  Done. Loading time: ", t2-t1)
 
@@ -227,8 +238,11 @@ def main(model_size: str = "124M", models_dir: str = "models"):
     t1 = clock()
     decoder_txt = "".join(decoder)
     idx = decoder_idx(decoder)
+    vocab_txt = "".join(vocab)
+    vocab_idx = decoder_idx(vocab)
     byte_decoder = bytes_to_unicode()
-    convert(params, hparams["n_head"], hparams["n_ctx"], idx, decoder_txt, byte_decoder)
+    convert(params, hparams["n_head"], hparams["n_ctx"], idx, decoder_txt,
+            vocab_idx, vocab_txt, byte_decoder)
     t2 = clock()
     print("  Done. Time: ", t2-t1)
     # TODO: This will not be needed once we have the encoder in Fortran:
