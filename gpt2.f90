@@ -386,7 +386,7 @@ function merge_utf8_pairs(intokens) result(tokens)
 type(string), intent(in) :: intokens(:)
 type(string), allocatable :: tokens(:)
 tokens = intokens
-if (tokens(1)%s(1:2) == "Ġ") then
+if (len(tokens(1)%s) == 1 .and. iachar(tokens(1)%s) >= 128) then
     tokens = merge_pair(tokens, 1)
 end if
 end function
@@ -406,12 +406,7 @@ allocate(tokens(len(token)))
 do i = 1, len(token)
     tokens(i)%s = token(i:i)
 end do
-!tokens = merge_utf8_pairs(tokens)
-! Merge all UTF-8 character pairs, for now hardwired
-if (token(1:2) == "Ġ") then
-    tokens = merge_pair(tokens, 1)
-end if
-
+tokens = merge_utf8_pairs(tokens)
 do
     !print *, "tokens = ", (tokens(i)%s // " ", i=1,size(tokens))
     if (size(tokens) == 1) then
