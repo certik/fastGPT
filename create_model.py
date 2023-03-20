@@ -221,7 +221,10 @@ def bytes_to_unicode():
     for y in byte_decoder:
         x = ord(y)
         bd[x] = byte_decoder[y]
-    return bd
+    bd2 = np.zeros(256, dtype=np.int32)
+    for i in range(np.size(bd)):
+        bd2[bd[i]] = i
+    return bd2
 
 def main(model_size: str = "124M", models_dir: str = "models"):
     print("Loading model")
