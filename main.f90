@@ -86,7 +86,8 @@ read(u, input_fastGPT)
 do
     read(u, "(a)", iostat=ios) input_txt2
     if (ios /= 0) exit
-    input_txt = input_txt // char(10) // trim(input_txt2)
+    if (len(input_txt) > 0) input_txt = input_txt // char(10)
+    input_txt = input_txt // trim(input_txt2)
 end do
 close(u)
 print "(a)", "Input text"
