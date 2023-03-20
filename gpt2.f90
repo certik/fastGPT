@@ -286,6 +286,10 @@ end do
 end function
 
 function next_token(input, i) result(y)
+! TODO: tokenize exactly according to this regex:
+! re.compile(r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""")
+! Right now we are more greedy, but the bpe() tokenizer seems to still return
+! exactly the same tokens for most inputs (it is not clear if for all inputs).
 character(*), intent(in) :: input
 integer, intent(inout) :: i
 character(:), allocatable :: y
