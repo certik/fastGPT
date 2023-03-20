@@ -381,6 +381,16 @@ merged_token%s = intokens(idx)%s // intokens(idx+1)%s
 tokens = [intokens(:idx-1), merged_token, intokens(idx+2:)]
 end function
 
+function merge_utf8_pairs(intokens) result(tokens)
+! Merge all UTF-8 character pairs
+type(string), intent(in) :: intokens(:)
+type(string), allocatable :: tokens(:)
+tokens = intokens
+if (tokens(1)%s(1:2) == "Ġ") then
+    tokens = merge_pair(tokens, 1)
+end if
+end function
+
 function bpe(token, vocab_idx, vocab_txt) result(tokens)
 ! Takes a token as a string, and returns bpe tokens as an array of strings
 character(*), intent(in) :: token
@@ -396,13 +406,14 @@ allocate(tokens(len(token)))
 do i = 1, len(token)
     tokens(i)%s = token(i:i)
 end do
+!tokens = merge_utf8_pairs(tokens)
 ! Merge all UTF-8 character pairs, for now hardwired
 if (token(1:2) == "Ġ") then
     tokens = merge_pair(tokens, 1)
 end if
 
 do
-    print *, "tokens = ", (tokens(i)%s // " ", i=1,size(tokens))
+    !print *, "tokens = ", (tokens(i)%s // " ", i=1,size(tokens))
     if (size(tokens) == 1) then
         ! The token pairs were either all merged into one word, or the input
         ! token was a one character word, either way we are done:
@@ -419,21 +430,12 @@ do
         ! No token pair can be merged, so we are done:
         exit
     end if
-    print *, pair_scores
-    print *, merge_pair_idx, pair_scores(merge_pair_idx)
+    !print *, pair_scores
+    !print *, merge_pair_idx, pair_scores(merge_pair_idx)
     tokens = merge_pair(tokens, merge_pair_idx)
     deallocate(pair_scores)
 end do
-print *, "final tokens = ", (tokens(i)%s // " ", i=1,size(tokens))
-stop
-if (token == "Ġtheorized") then
-    s%s = "Ġtheor"
-    s2%s = "ized"
-    tokens = [s, s2]
-else
-    s%s = token
-    tokens = [s]
-end if
+!print *, "final tokens = ", (tokens(i)%s // " ", i=1,size(tokens))
 end function
 
 function encode(input, idx, decoder_txt, vocab_idx, vocab_txt, byte_encoder) &
@@ -459,8 +461,7 @@ do
         ! either one or two bytes of UTF-8 are appended to tmp2:
         call codepoint_to_utf8(tmp2, c)
     end do
-    bpe_tokens = bpe("Ġtheorized", vocab_idx, vocab_txt)
-    stop
+    bpe_tokens = bpe(tmp2, vocab_idx, vocab_txt)
     do j = 1, size(bpe_tokens)
         tokens = [tokens, word_idx(bpe_tokens(j)%s, idx, decoder_txt)]
     end do
