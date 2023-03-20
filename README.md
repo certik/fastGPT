@@ -54,13 +54,10 @@ subsequent runs:
 
     python create_model.py --models_dir "models" --model_size "124M"
 
-Create an input file:
+Now you can modify the `input` file to change the input string and set other
+parameters.
 
-    python encode_input.py \
-        "Alan Turing theorized that computers would one day become very powerful, but even he could not imagine" \
-        -n 20
-
-Run (requires `model.dat` and `input.dat` in the current directory):
+Run (requires `model.dat` and `input` in the current directory):
 
     ./gpt2
 
