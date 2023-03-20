@@ -385,10 +385,20 @@ function merge_utf8_pairs(intokens) result(tokens)
 ! Merge all UTF-8 character pairs
 type(string), intent(in) :: intokens(:)
 type(string), allocatable :: tokens(:)
+integer :: i
+logical :: one_more_pass
 tokens = intokens
-if (len(tokens(1)%s) == 1 .and. iachar(tokens(1)%s) >= 128) then
-    tokens = merge_pair(tokens, 1)
-end if
+one_more_pass = .true.
+do while(one_more_pass)
+    one_more_pass = .false.
+    do i = 1, size(tokens)-1
+        if (len(tokens(i)%s) == 1 .and. iachar(tokens(i)%s) >= 128) then
+            tokens = merge_pair(tokens, i)
+            one_more_pass = .true.
+            exit
+        end if
+    end do
+end do
 end function
 
 function bpe(token, vocab_idx, vocab_txt) result(tokens)
