@@ -1,5 +1,6 @@
 program gpt2
-use gpt2_mod, only: generate, encode, decode
+use gpt2_mod, only: generate
+use tokenizer, only: encode, decode
 use omp, only: omp_get_wtime
 implicit none
 
