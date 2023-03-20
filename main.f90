@@ -7,8 +7,9 @@ integer, parameter :: sp = kind(0.0)
 integer, parameter :: dp = kind(0.d0)
 
 integer :: n_vocab, n_ctx, n_seq, n_embd, n_layer, n_head, &
-    n_tokens_to_generate, n_decoder_idx, n_decoder_txt, n_byte_decoder
-integer, allocatable :: input(:), decoder_idx(:), byte_decoder(:)
+    n_tokens_to_generate, n_decoder_idx, n_decoder_txt, &
+    n_vocab_idx, n_vocab_txt, n_byte_decoder
+integer, allocatable :: input(:), decoder_idx(:), vocab_idx(:), byte_decoder(:)
 integer :: byte_encoder(0:255)
 real(sp), allocatable :: wte(:,:), wpe(:,:), &
     mlp_fc_w(:,:,:), mlp_fc_b(:,:), &
@@ -18,7 +19,7 @@ real(sp), allocatable :: wte(:,:), wpe(:,:), &
     ln1_b(:,:), ln1_g(:,:), &
     ln2_b(:,:), ln2_g(:,:), &
     lnf_b(:), lnf_g(:)
-character, allocatable :: decoder_txt(:)
+character, allocatable :: decoder_txt(:), vocab_txt(:)
 integer, allocatable :: output(:)
 character(:), allocatable :: output_txt
 real(dp) :: t1, t2, t1o, t2o
@@ -33,7 +34,7 @@ open(newunit=u, file="model.dat", form="unformatted", access="stream", status="o
 !                    fastGPT (digits look similar to the letters they represent)
 ! model_version /= 0xfa51697
 read(u) n_vocab, n_ctx, n_embd, n_layer, n_head, n_decoder_idx, n_decoder_txt, &
-    n_byte_decoder
+    n_vocab_idx, n_vocab_txt, n_byte_decoder
 allocate(wte(n_embd,n_vocab), wpe(n_embd,n_ctx), &
     mlp_fc_w(4*n_embd,n_embd,n_layer), mlp_fc_b(4*n_embd,n_layer), &
     mlp_proj_w(n_embd,4*n_embd,n_layer), mlp_proj_b(n_embd,n_layer), &
@@ -43,6 +44,7 @@ allocate(wte(n_embd,n_vocab), wpe(n_embd,n_ctx), &
     ln2_b(n_embd,n_layer), ln2_g(n_embd,n_layer), &
     lnf_b(n_embd), lnf_g(n_embd), &
     decoder_idx(n_decoder_idx), decoder_txt(n_decoder_txt), &
+    vocab_idx(n_vocab_idx), vocab_txt(n_vocab_txt), &
     byte_decoder(0:n_byte_decoder-1))
 read(u) wte, wpe, &
     mlp_fc_w, mlp_fc_b, &
@@ -52,7 +54,9 @@ read(u) wte, wpe, &
     ln1_b, ln1_g, &
     ln2_b, ln2_g, &
     lnf_b, lnf_g, &
-    decoder_idx, decoder_txt, byte_decoder
+    decoder_idx, decoder_txt, &
+    vocab_idx, vocab_txt, &
+    byte_decoder
 close(u)
 call cpu_time(t2)
 print "(a,f8.3,a)", "    done. Time:", t2-t1, "s"
