@@ -372,9 +372,11 @@ if (c >= 2048) then
 end if
 end function
 
-function bpe(token) result(tokens)
+function bpe(token, vocab_idx, vocab_txt) result(tokens)
 ! Takes a token as a string, and returns bpe tokens as an array of strings
 character(*), intent(in) :: token
+integer, intent(in) :: vocab_idx(0:)
+character, intent(in) :: vocab_txt(:)
 type(string), allocatable :: tokens(:)
 type(string) :: s, s2
 if (token == "Ġtheorized") then
@@ -410,7 +412,7 @@ do
         ! either one or two bytes of UTF-8 are appended to tmp2:
         call codepoint_to_utf8(tmp2, c)
     end do
-    bpe_tokens = bpe(tmp2)
+    bpe_tokens = bpe(tmp2, vocab_idx, vocab_txt)
     do j = 1, size(bpe_tokens)
         tokens = [tokens, word_to_token(bpe_tokens(j)%s, idx, decoder_txt)]
     end do
