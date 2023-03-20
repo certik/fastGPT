@@ -21,10 +21,11 @@ real(sp), allocatable :: wte(:,:), wpe(:,:), &
     lnf_b(:), lnf_g(:)
 character, allocatable :: decoder_txt(:), vocab_txt(:)
 integer, allocatable :: output(:)
-character(:), allocatable :: output_txt
+character(:), allocatable :: output_txt, input_txt
 real(dp) :: t1, t2, t1o, t2o
 integer :: u, i
 logical :: use_cache
+namelist / input_fastGPT / n_tokens_to_generate, input_txt
 
 ! Load the model
 print "(a)", "Loading the model..."
@@ -60,6 +61,14 @@ read(u) wte, wpe, &
 close(u)
 call cpu_time(t2)
 print "(a,f8.3,a)", "    done. Time:", t2-t1, "s"
+print *
+print "(a)", "Model parameters:"
+print "(a,i6)", "n_vocab =", n_vocab
+print "(a,i6)", "n_ctx   =", n_ctx
+print "(a,i6)", "n_embd  =", n_embd
+print "(a,i6)", "n_layer =", n_layer
+print "(a,i6)", "n_head  =", n_head
+print *
 
 ! Compute byte_decoder:
 allocate(byte_decoder(0:maxval(byte_encoder)))
@@ -69,22 +78,31 @@ do i = 0, size(byte_encoder)-1
 end do
 
 ! Load the input
-open(newunit=u, file="input.dat", form="unformatted", access="stream", status="old")
-read(u) n_seq, n_tokens_to_generate
-allocate(input(n_seq))
-read(u) input
+allocate(character(n_ctx) :: input_txt)
+open(newunit=u, file="input", status="old")
+read(u, input_fastGPT)
 close(u)
+input_txt = trim(input_txt)
+print "(a)", "Input text"
+print "(a)", input_txt
 
-print "(a)", "Model parameters:"
-print "(a,i6)", "n_vocab =", n_vocab
-print "(a,i6)", "n_ctx   =", n_ctx
-print "(a,i6)", "n_embd  =", n_embd
-print "(a,i6)", "n_layer =", n_layer
-print "(a,i6)", "n_head  =", n_head
+print *
+print "(a)",  "Encoding: tokenizing input text into tokens (currently slow)..."
+call cpu_time(t1)
+input = encode(input_txt, decoder_idx, decoder_txt, vocab_idx, vocab_txt, &
+    byte_encoder)
+call cpu_time(t2)
+n_seq = size(input)
+print "(a,f8.3,a)", "    done. Time:", t2-t1, "s"
 print *
 print "(a)", "Input parameters:"
 print "(a,i4)", "n_seq                =", n_seq
 print "(a,i4)", "n_tokens_to_generate =", n_tokens_to_generate
+print *
+print "(a)", "Input tokens:"
+print "(1000(i6))", input
+print *
+
 
 if (n_seq + n_tokens_to_generate >= n_ctx) then
     print *, "The maximum sequence length of the model was surpassed."
@@ -92,20 +110,16 @@ if (n_seq + n_tokens_to_generate >= n_ctx) then
     error stop
 end if
 
-print *
-print "(a)", "Input tokens:"
-print "(1000(i6))", input
 print "(a)", "Decoded input as text:"
 !print "(a)", decode(input, decoder_idx, decoder_txt, byte_decoder)
 allocate(character(0) :: output_txt) ! Fix GFortran warning
 output_txt = decode(input, decoder_idx, decoder_txt, byte_decoder)
 print "(a)", output_txt
+print *
 
-print *, "Encoded tokens"
-print *,  "    (Currently we use O(n) vocabulary lookup instead of O(1) -> very SLOW)"
-input = encode(output_txt, decoder_idx, decoder_txt, vocab_idx, vocab_txt, &
-    byte_encoder)
-print "(1000(i6))", input
+if (input_txt /= output_txt) then
+    error stop "The decoded input text does not agree with the input text"
+end if
 
 allocate(output(n_tokens_to_generate))
 print "(a)", "Running model..."
