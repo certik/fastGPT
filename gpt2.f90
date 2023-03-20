@@ -6,10 +6,6 @@ implicit none
 integer, parameter :: sp = kind(0.0)
 real(sp), parameter :: pi = 3.14159265358979323846_sp
 
-type :: string
-    character(:), allocatable :: s
-end type
-
 contains
 
 elemental real(sp) function fast_tanh(x) result(y)
