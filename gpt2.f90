@@ -387,10 +387,11 @@ else
 end if
 end function
 
-function encode(input, idx, decoder_txt, byte_encoder) result(tokens)
+function encode(input, idx, decoder_txt, vocab_idx, vocab_txt, byte_encoder) &
+        result(tokens)
 character(*), intent(in) :: input
-integer, intent(in) :: idx(0:), byte_encoder(0:)
-character, intent(in) :: decoder_txt(:)
+integer, intent(in) :: idx(0:), vocab_idx(0:), byte_encoder(0:)
+character, intent(in) :: decoder_txt(:), vocab_txt(:)
 integer, allocatable :: tokens(:)
 character(:), allocatable :: tmp, tmp2
 type(string), allocatable :: bpe_tokens(:)

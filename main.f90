@@ -106,7 +106,8 @@ output_txt = decode(input, decoder_idx, decoder_txt, byte_decoder)
 print "(a)", output_txt
 
 print *, "Encoded tokens"
-input = encode(output_txt, decoder_idx, decoder_txt, byte_encoder)
+input = encode(output_txt, decoder_idx, decoder_txt, vocab_idx, vocab_txt, &
+    byte_encoder)
 print "(1000(i6))", input
 
 stop
