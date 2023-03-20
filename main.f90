@@ -106,11 +106,10 @@ output_txt = decode(input, decoder_idx, decoder_txt, byte_decoder)
 print "(a)", output_txt
 
 print *, "Encoded tokens"
+print *,  "    (Currently we use O(n) vocabulary lookup instead of O(1) -> very SLOW)"
 input = encode(output_txt, decoder_idx, decoder_txt, vocab_idx, vocab_txt, &
     byte_encoder)
 print "(1000(i6))", input
-
-stop
 
 allocate(output(n_tokens_to_generate))
 print "(a)", "Running model..."
