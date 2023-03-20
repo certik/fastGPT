@@ -137,9 +137,11 @@ output = generate(n_tokens_to_generate, n_vocab, n_ctx, size(input), n_embd, &
 t2o = omp_get_wtime()
 call cpu_time(t2)
 print "(a,f8.3,a,f4.2,a)", "    done. Time:", t2o-t1o, "s (", (t2-t1)/(t2o-t1o), "x)"
+print *
 print "(a)", "Output tokens:"
 print "(1000(i6))", output
 output_txt = decode(output, decoder_idx, decoder_txt, byte_decoder)
+print *
 print "(a)", "Decoded output as text:"
 print "(a)", output_txt
 end program
