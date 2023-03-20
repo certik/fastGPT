@@ -248,10 +248,6 @@ def main(model_size: str = "124M", models_dir: str = "models"):
             vocab_idx, vocab_txt, byte_decoder)
     t2 = clock()
     print("  Done. Time: ", t2-t1)
-    # TODO: This will not be needed once we have the encoder in Fortran:
-    print("Copying encoder.json and vocab.bpe into the current directory")
-    copyfile(os.path.join(models_dir, model_size, "encoder.json"), "encoder.json")
-    copyfile(os.path.join(models_dir, model_size, "vocab.bpe"), "vocab.bpe")
 
 
 if __name__ == "__main__":
