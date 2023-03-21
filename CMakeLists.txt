@@ -80,6 +80,9 @@ endif()
 add_executable(gpt2 main.f90)
 target_link_libraries(gpt2 fastgpt)
 
+add_executable(chat chat.f90)
+target_link_libraries(chat fastgpt)
+
 add_executable(test_basic_input tests/test_basic_input.f90)
 target_link_libraries(test_basic_input fastgpt)
 add_test(test_basic_input ${PROJECT_BINARY_DIR}/test_basic_input)
@@ -87,6 +90,10 @@ add_test(test_basic_input ${PROJECT_BINARY_DIR}/test_basic_input)
 add_executable(test_more_inputs tests/test_more_inputs.f90)
 target_link_libraries(test_more_inputs fastgpt)
 add_test(test_more_inputs ${PROJECT_BINARY_DIR}/test_more_inputs)
+
+add_executable(test_chat tests/test_chat.f90)
+target_link_libraries(test_chat fastgpt)
+add_test(test_chat ${PROJECT_BINARY_DIR}/test_chat)
 
 if(NOT PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
     # Git auto-ignore out-of-source build directory
