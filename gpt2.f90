@@ -1,5 +1,6 @@
 module gpt2_mod
 use linalg, only: matmul_2d, matmul_2d_t
+use tokenizer, only: decode
 implicit none
 
 integer, parameter :: sp = kind(0.0)
@@ -269,43 +270,6 @@ do i = 1, n_tokens_to_generate
 end do
 output = input2(n_seq+1:)
 print *
-end function
-
-function c2s(x) result(y)
-character, intent(in) :: x(:)
-character(:), allocatable :: y
-integer :: i
-allocate(character(size(x)) :: y)
-do i = 1, size(x)
-    y(i:i) = x(i)
-end do
-end function
-
-function decode(tokens, idx, decoder_txt, byte_decoder) result(output)
-integer, intent(in) :: tokens(:), idx(0:), byte_decoder(0:)
-character, intent(in) :: decoder_txt(:)
-character(:), allocatable :: output
-character(:), allocatable :: output2, tmp
-integer :: i, c, d
-allocate(character(0) :: output2) ! Fix GFortran warning
-output2 = ""
-do i = 1, size(tokens)
-    output2 = output2 // c2s(decoder_txt(idx(tokens(i))+1:idx(tokens(i)+1)))
-end do
-i = 1
-output = ""
-do
-    c = iachar(output2(i:i))
-    if (c >= 128) then
-        i = i + 1
-        d = iachar(output2(i:i))
-        c = ior(ishft(iand(c, 31), 6), iand(d, 63))
-    end if
-    tmp = achar(byte_decoder(c))
-    output = output // tmp
-    if (i == len(output2)) exit
-    i = i + 1
-end do
 end function
 
 end module
