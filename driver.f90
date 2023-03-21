@@ -9,11 +9,12 @@ integer, parameter :: dp = kind(0.d0)
 
 contains
 
-subroutine gpt2_driver()
+subroutine gpt2_driver(input, output)
+integer, allocatable, intent(out) :: input(:), output(:)
 integer :: n_vocab, n_ctx, n_seq, n_embd, n_layer, n_head, &
     n_tokens_to_generate, n_decoder_idx, n_decoder_txt, &
     n_vocab_idx, n_vocab_txt, n_byte_encoder
-integer, allocatable :: input(:), decoder_idx(:), vocab_idx(:), byte_decoder(:)
+integer, allocatable :: decoder_idx(:), vocab_idx(:), byte_decoder(:)
 integer :: byte_encoder(0:255)
 real(sp), allocatable :: wte(:,:), wpe(:,:), &
     mlp_fc_w(:,:,:), mlp_fc_b(:,:), &
@@ -24,16 +25,11 @@ real(sp), allocatable :: wte(:,:), wpe(:,:), &
     ln2_b(:,:), ln2_g(:,:), &
     lnf_b(:), lnf_g(:)
 character, allocatable :: decoder_txt(:), vocab_txt(:)
-integer, allocatable :: output(:)
 character(:), allocatable :: output_txt, input_txt
 character(1024) :: input_txt2
 real(dp) :: t1, t2, t1o, t2o
 integer :: u, i, ios
 logical :: use_cache
-integer, parameter :: input_ref(*) = [36235, 39141, 18765, 1143, 326, 9061, &
-    561, 530, 1110, 1716, 845, 3665, 11, 475, 772, 339, 714, 407, 5967]
-integer, parameter :: output_ref(*) = [703, 484, 561, 307, 1498, 284, 466, &
-    523, 13, 198, 198, 1, 40, 892, 326, 262, 749, 1593, 1517, 318]
 namelist / input_fastGPT / n_tokens_to_generate
 
 ! Load the model
@@ -118,13 +114,6 @@ print "(a)", "Input tokens:"
 print "(1000(i6))", input
 print *
 
-if (all(input == input_ref)) then
-    print *, "Input tokens agree with reference results"
-else
-    print *, "Input tokens DO NOT agree with reference results"
-    error stop
-end if
-
 if (n_seq + n_tokens_to_generate >= n_ctx) then
     print *, "The maximum sequence length of the model was surpassed."
     print *, "Make the input and/or number of tokens to generate shorter."
@@ -165,13 +154,6 @@ output_txt = decode(output, decoder_idx, decoder_txt, byte_decoder)
 print *
 print "(a)", "Decoded output as text:"
 print "(a)", output_txt
-
-if (all(output == output_ref)) then
-    print *, "Output tokens agree with reference results"
-else
-    print *, "Output tokens DO NOT agree with reference results"
-    error stop
-end if
 end subroutine
 
 end module
