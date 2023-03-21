@@ -1,29 +1,11 @@
 module driver
-use gpt2_mod, only: generate
+use gpt2_mod, only: generate, model_t
 use tokenizer, only: encode, decode
 use omp, only: omp_get_wtime
 implicit none
 
 integer, parameter :: sp = kind(0.0)
 integer, parameter :: dp = kind(0.d0)
-
-! This derived type contains all the data of the GPT-2 model, including all
-! weights, model parameters, and encoder/decoder data
-type :: model_t
-    integer :: n_vocab, n_ctx, n_embd, n_layer, n_head, &
-        n_decoder_idx, n_decoder_txt, &
-        n_vocab_idx, n_vocab_txt, n_byte_encoder
-    real(sp), allocatable :: wte(:,:), wpe(:,:), &
-        mlp_fc_w(:,:,:), mlp_fc_b(:,:), &
-        mlp_proj_w(:,:,:), mlp_proj_b(:,:), &
-        attn_w(:,:,:), attn_b(:,:), &
-        attn_proj_w(:,:,:), attn_proj_b(:,:), &
-        ln1_b(:,:), ln1_g(:,:), &
-        ln2_b(:,:), ln2_g(:,:), &
-        lnf_b(:), lnf_g(:)
-    integer, allocatable :: decoder_idx(:), vocab_idx(:), byte_encoder(:)
-    character, allocatable :: decoder_txt(:), vocab_txt(:)
-end type
 
 contains
 
@@ -170,15 +152,8 @@ print "(a)", "Running model..."
 call cpu_time(t1)
 t1o = omp_get_wtime()
 use_cache = .true.
-output = generate(n_tokens_to_generate, m%n_vocab, m%n_ctx, size(input), &
-    m%n_embd, &
-    m%n_layer, m%n_head, &
-    input, &
-    m%wte, m%wpe, &
-    m%mlp_fc_w, m%mlp_fc_b, m%mlp_proj_w, m%mlp_proj_b, &
-    m%attn_w, m%attn_b, m%attn_proj_w, m%attn_proj_b, &
-    m%ln1_g, m%ln1_b, m%ln2_g, m%ln2_b, m%lnf_g, m%lnf_b, use_cache, &
-    m%decoder_idx, m%decoder_txt, byte_decoder)
+output = generate(n_tokens_to_generate, m, size(input), input, use_cache, &
+    byte_decoder)
 t2o = omp_get_wtime()
 call cpu_time(t2)
 print "(a,f8.3,a,f4.2,a)", "    done. Time:", t2o-t1o, "s (", (t2-t1)/(t2o-t1o), "x)"
