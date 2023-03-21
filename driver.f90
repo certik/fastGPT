@@ -100,7 +100,7 @@ integer, allocatable :: byte_decoder(:)
 integer :: n_seq
 character(:), allocatable :: output_txt
 real(dp) :: t1, t2, t1o, t2o
-integer :: u, i
+integer :: i
 logical :: use_cache
 
 ! Load the model
