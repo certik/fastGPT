@@ -48,6 +48,7 @@ enable_testing()
 set(SRC
     gpt2.f90
     tokenizer.f90
+    driver.f90
     )
 if (FASTGPT_BLAS STREQUAL "Accelerate")
     list(APPEND SRC
