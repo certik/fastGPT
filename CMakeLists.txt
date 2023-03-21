@@ -77,7 +77,7 @@ elseif (FASTGPT_BLAS STREQUAL "OpenBLAS")
         "$<IF:$<BOOL:${OMP_FOUND}>,p::omp,OpenMP::OpenMP_Fortran>")
 endif()
 
-if(NOT CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+if(NOT PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
     # Git auto-ignore out-of-source build directory
     file(GENERATE OUTPUT .gitignore CONTENT "*")
 endif()
