@@ -7,6 +7,7 @@ make
 mkdir models
 python create_model.py --models_dir "models" --model_size "124M"
 ./gpt2
+ctest
 
 make clean
 rm CMakeCache.txt
