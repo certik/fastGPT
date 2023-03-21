@@ -1,29 +1,12 @@
 module driver
-use gpt2_mod, only: generate
-use tokenizer, only: encode, decode
+use gpt2_mod, only: generate, model_t
+use tokenizer, only: encode, decode, string
 use omp, only: omp_get_wtime
 implicit none
 
 integer, parameter :: sp = kind(0.0)
 integer, parameter :: dp = kind(0.d0)
-
-! This derived type contains all the data of the GPT-2 model, including all
-! weights, model parameters, and encoder/decoder data
-type :: model_t
-    integer :: n_vocab, n_ctx, n_embd, n_layer, n_head, &
-        n_decoder_idx, n_decoder_txt, &
-        n_vocab_idx, n_vocab_txt, n_byte_encoder
-    real(sp), allocatable :: wte(:,:), wpe(:,:), &
-        mlp_fc_w(:,:,:), mlp_fc_b(:,:), &
-        mlp_proj_w(:,:,:), mlp_proj_b(:,:), &
-        attn_w(:,:,:), attn_b(:,:), &
-        attn_proj_w(:,:,:), attn_proj_b(:,:), &
-        ln1_b(:,:), ln1_g(:,:), &
-        ln2_b(:,:), ln2_g(:,:), &
-        lnf_b(:), lnf_g(:)
-    integer, allocatable :: decoder_idx(:), vocab_idx(:), byte_encoder(:)
-    character, allocatable :: decoder_txt(:), vocab_txt(:)
-end type
+character(1), parameter :: LF = achar(10)
 
 contains
 
@@ -170,15 +153,9 @@ print "(a)", "Running model..."
 call cpu_time(t1)
 t1o = omp_get_wtime()
 use_cache = .true.
-output = generate(n_tokens_to_generate, m%n_vocab, m%n_ctx, size(input), &
-    m%n_embd, &
-    m%n_layer, m%n_head, &
-    input, &
-    m%wte, m%wpe, &
-    m%mlp_fc_w, m%mlp_fc_b, m%mlp_proj_w, m%mlp_proj_b, &
-    m%attn_w, m%attn_b, m%attn_proj_w, m%attn_proj_b, &
-    m%ln1_g, m%ln1_b, m%ln2_g, m%ln2_b, m%lnf_g, m%lnf_b, use_cache, &
-    m%decoder_idx, m%decoder_txt, byte_decoder)
+output = generate(n_tokens_to_generate, m, size(input), input, use_cache, &
+    byte_decoder)
+print *
 t2o = omp_get_wtime()
 call cpu_time(t2)
 print "(a,f8.3,a,f4.2,a)", "    done. Time:", t2o-t1o, "s (", (t2-t1)/(t2o-t1o), "x)"
@@ -189,6 +166,90 @@ output_txt = decode(output, m%decoder_idx, m%decoder_txt, byte_decoder)
 print *
 print "(a)", "Decoded output as text:"
 print "(a)", output_txt
+end subroutine
+
+subroutine gpt2_driver3(input_txt, n_tokens_to_generate, stop_text, m, output_txt)
+character(*), intent(in) :: input_txt, stop_text
+integer, intent(in) :: n_tokens_to_generate
+type(model_t), intent(in) :: m
+integer, allocatable :: input(:), output(:)
+integer, allocatable :: byte_decoder(:)
+integer :: n_seq
+character(:), allocatable, intent(out) :: output_txt
+integer :: i
+logical :: use_cache
+! TODO: move the decoder into model_t
+! Compute byte_decoder:
+allocate(byte_decoder(0:maxval(m%byte_encoder)))
+byte_decoder = 0
+do i = 0, size(m%byte_encoder)-1
+    byte_decoder(m%byte_encoder(i)) = i
+end do
+input = encode(input_txt, m%decoder_idx, m%decoder_txt, m%vocab_idx, m%vocab_txt, &
+    m%byte_encoder)
+n_seq = size(input)
+if (n_seq + n_tokens_to_generate >= m%n_ctx) then
+    print *, "The maximum sequence length of the model was surpassed."
+    print *, "Make the input and/or number of tokens to generate shorter."
+    error stop
+end if
+allocate(character(0) :: output_txt) ! Fix GFortran warning
+output_txt = decode(input, m%decoder_idx, m%decoder_txt, byte_decoder)
+if (input_txt /= output_txt) then
+    error stop "The decoded input text does not agree with the input text"
+end if
+use_cache = .true.
+output = generate(n_tokens_to_generate, m, size(input), input, use_cache, &
+    byte_decoder, stop_text)
+output_txt = decode(output, m%decoder_idx, m%decoder_txt, byte_decoder)
+end subroutine
+
+function get_prompt() result(input)
+character(:), allocatable :: input
+character(1024) :: tmp
+integer ::ios
+read(*,"(a)",iostat=ios) tmp
+if (ios == 0) then
+    input = trim(tmp)
+else
+    input = ""
+end if
+end function
+
+subroutine chat(inputs)
+type(string), optional, intent(in) :: inputs(:)
+type(model_t) :: m
+character(:), allocatable :: prompt, input, output
+integer :: i, n_prompts
+call load_model("model.dat", m)
+prompt = "Your name is fastGPT and you are an AI bot. The user will ask you &
+&questions and you answer in a nice, truthful, short way." // LF // "&
+&User: What is the capital of Czechia?" // LF // "&
+&fastGPT: Prague." // LF // "&
+&User: How many legs does a dog have?" // LF // "&
+&fastGPT: Four." // LF // "&
+&User:"
+write(*,"(a)",advance="no") prompt
+if (present(inputs)) then
+    n_prompts = size(inputs)
+else
+    n_prompts = 1024
+end if
+do i = 1, n_prompts
+    write(*,"(a)",advance="no")  " "
+    if (present(inputs)) then
+        input = inputs(i)%s
+        write(*,"(a)") input
+    else
+        input = get_prompt()
+        if (input == "") exit
+    end if
+    write(*,"(a)",advance="no") "fastGPT:"
+    prompt = prompt // " " // input // LF // "fastGPT:"
+    call gpt2_driver3(prompt, 200, "User:", m, output)
+    prompt = prompt // output
+end do
+print *
 end subroutine
 
 end module

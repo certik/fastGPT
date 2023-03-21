@@ -6,6 +6,24 @@ implicit none
 integer, parameter :: sp = kind(0.0)
 real(sp), parameter :: pi = 3.14159265358979323846_sp
 
+! This derived type contains all the data of the GPT-2 model, including all
+! weights, model parameters, and encoder/decoder data
+type :: model_t
+    integer :: n_vocab, n_ctx, n_embd, n_layer, n_head, &
+        n_decoder_idx, n_decoder_txt, &
+        n_vocab_idx, n_vocab_txt, n_byte_encoder
+    real(sp), allocatable :: wte(:,:), wpe(:,:), &
+        mlp_fc_w(:,:,:), mlp_fc_b(:,:), &
+        mlp_proj_w(:,:,:), mlp_proj_b(:,:), &
+        attn_w(:,:,:), attn_b(:,:), &
+        attn_proj_w(:,:,:), attn_proj_b(:,:), &
+        ln1_b(:,:), ln1_g(:,:), &
+        ln2_b(:,:), ln2_g(:,:), &
+        lnf_b(:), lnf_g(:)
+    integer, allocatable :: decoder_idx(:), vocab_idx(:), byte_encoder(:)
+    character, allocatable :: decoder_txt(:), vocab_txt(:)
+end type
+
 contains
 
 elemental real(sp) function fast_tanh(x) result(y)
@@ -213,36 +231,29 @@ x = layer_norm(x, lnf_g, lnf_b, 1e-5)
 call matmul_2d_t(wte, x, y)
 end function
 
-function generate(n_tokens_to_generate, &
-        n_vocab, n_ctx, n_seq, n_embd, n_layer, n_head, input, &
-        wte, wpe, &
-        mlp_fc_w, mlp_fc_b, mlp_proj_w, mlp_proj_b, &
-        attn_w, attn_b, attn_proj_w, attn_proj_b, &
-        ln1_g, ln1_b, ln2_g, ln2_b, lnf_g, lnf_b, use_cache, &
-        decoder_idx, decoder_txt, byte_decoder) result(output)
-integer, intent(in) :: n_vocab, n_ctx, n_seq, n_embd, n_layer, n_head, &
-    n_tokens_to_generate
+function generate(n_tokens_to_generate, m, &
+        n_seq, input, &
+        use_cache, &
+        byte_decoder, stop_text) result(output)
+integer, intent(in) :: n_seq, n_tokens_to_generate
+type(model_t), intent(in) :: m
 integer, intent(in) :: input(n_seq)
-real(sp), intent(in) :: wte(n_embd,n_vocab), wpe(n_embd,n_ctx), &
-    mlp_fc_w(4*n_embd,n_embd,n_layer), mlp_fc_b(4*n_embd,n_layer), &
-    mlp_proj_w(n_embd,4*n_embd,n_layer), mlp_proj_b(n_embd,n_layer), &
-    attn_w(3*n_embd,n_embd,n_layer), attn_b(3*n_embd,n_layer), &
-    attn_proj_w(n_embd,n_embd,n_layer), attn_proj_b(n_embd,n_layer), &
-    ln1_b(n_embd,n_layer), ln1_g(n_embd,n_layer), &
-    ln2_b(n_embd,n_layer), ln2_g(n_embd,n_layer), &
-    lnf_b(n_embd), lnf_g(n_embd)
 logical, intent(in) :: use_cache
-integer, intent(in) :: decoder_idx(:), byte_decoder(:)
-character, intent(in) :: decoder_txt(:)
-integer :: output(n_tokens_to_generate)
+integer, intent(in) :: byte_decoder(:)
+character(*), intent(in), optional :: stop_text ! Stop if you see this text
+integer, allocatable :: output(:)
 real(sp), allocatable :: logits(:,:)
 integer :: i
 integer :: n_seq2, n_seq_x
 integer :: next_id
 integer, allocatable :: input2(:)
 logical :: use_kv_cache
-real(sp) :: kv_cache(n_embd,n_seq+n_tokens_to_generate,2,n_layer)
+real(sp) :: kv_cache(m%n_embd,n_seq+n_tokens_to_generate,2,m%n_layer)
+character(:), allocatable :: output_txt, last_token
 allocate(input2(size(input)))
+if (present(stop_text)) then
+    output_txt = ""
+end if
 input2 = input
 do i = 1, n_tokens_to_generate
     if (use_cache) then
@@ -256,20 +267,28 @@ do i = 1, n_tokens_to_generate
     else
         n_seq_x = n_seq2
     end if
-    allocate(logits(n_vocab, n_seq_x))
-    logits = gpt2(n_vocab, n_ctx, n_seq2, n_seq_x, n_embd, n_layer, n_head, &
+    allocate(logits(m%n_vocab, n_seq_x))
+    logits = gpt2(m%n_vocab, m%n_ctx, n_seq2, n_seq_x, m%n_embd, m%n_layer, &
+            m%n_head, &
             input2, &
-            wte, wpe, &
-            mlp_fc_w, mlp_fc_b, mlp_proj_w, mlp_proj_b, &
-            attn_w, attn_b, attn_proj_w, attn_proj_b, &
-            ln1_g, ln1_b, ln2_g, ln2_b, lnf_g, lnf_b, use_kv_cache, kv_cache(:,:n_seq2,:,:))
+            m%wte, m%wpe, &
+            m%mlp_fc_w, m%mlp_fc_b, m%mlp_proj_w, m%mlp_proj_b, &
+            m%attn_w, m%attn_b, m%attn_proj_w, m%attn_proj_b, &
+            m%ln1_g, m%ln1_b, m%ln2_g, m%ln2_b, m%lnf_g, m%lnf_b, use_kv_cache, kv_cache(:,:n_seq2,:,:))
     next_id = maxloc(logits(:,n_seq_x), dim=1)-1
-    write(*, fmt="(a)", advance="no") decode([next_id], decoder_idx, decoder_txt, byte_decoder)
     input2 = [input2, next_id]
+    last_token = decode([next_id], m%decoder_idx, &
+        m%decoder_txt, byte_decoder)
+    write(*, fmt="(a)", advance="no") last_token
+    if (present(stop_text)) then
+        output_txt = output_txt // last_token
+        if (output_txt(len(output_txt)-len(stop_text)+1:len(output_txt)) == stop_text) then
+            exit
+        end if
+    end if
     deallocate(logits)
 end do
 output = input2(n_seq+1:)
-print *
 end function
 
 end module
