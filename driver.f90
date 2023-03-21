@@ -7,6 +7,24 @@ implicit none
 integer, parameter :: sp = kind(0.0)
 integer, parameter :: dp = kind(0.d0)
 
+! This derived type contains all the data of the GPT-2 model, including all
+! weights, model parameters, and encoder/decoder data
+type :: model_t
+    integer :: n_vocab, n_ctx, n_embd, n_layer, n_head, &
+        n_decoder_idx, n_decoder_txt, &
+        n_vocab_idx, n_vocab_txt, n_byte_encoder
+    real(sp), allocatable :: wte(:,:), wpe(:,:), &
+        mlp_fc_w(:,:,:), mlp_fc_b(:,:), &
+        mlp_proj_w(:,:,:), mlp_proj_b(:,:), &
+        attn_w(:,:,:), attn_b(:,:), &
+        attn_proj_w(:,:,:), attn_proj_b(:,:), &
+        ln1_b(:,:), ln1_g(:,:), &
+        ln2_b(:,:), ln2_g(:,:), &
+        lnf_b(:), lnf_g(:)
+    integer, allocatable :: decoder_idx(:), vocab_idx(:), byte_encoder(:)
+    character, allocatable :: decoder_txt(:), vocab_txt(:)
+end type
+
 contains
 
 subroutine load_input(filename, input_txt, n_tokens_to_generate)
@@ -27,6 +45,41 @@ do
     if (len(input_txt) > 0) input_txt = input_txt // char(10)
     input_txt = input_txt // trim(input_txt2)
 end do
+close(u)
+end subroutine
+
+subroutine load_model(filename, m)
+character(*), intent(in) :: filename
+type(model_t), intent(out) :: m
+integer :: u
+open(newunit=u, file=filename, form="unformatted", access="stream", status="old")
+!read(u) model_version
+!                    fastGPT (digits look similar to the letters they represent)
+! model_version /= 0xfa51697
+read(u) m%n_vocab, m%n_ctx, m%n_embd, m%n_layer, m%n_head, m%n_decoder_idx, &
+    m%n_decoder_txt, m%n_vocab_idx, m%n_vocab_txt, m%n_byte_encoder
+allocate(m%wte(m%n_embd,m%n_vocab), m%wpe(m%n_embd,m%n_ctx), &
+    m%mlp_fc_w(4*m%n_embd,m%n_embd,m%n_layer), m%mlp_fc_b(4*m%n_embd,m%n_layer), &
+    m%mlp_proj_w(m%n_embd,4*m%n_embd,m%n_layer), m%mlp_proj_b(m%n_embd,m%n_layer), &
+    m%attn_w(3*m%n_embd,m%n_embd,m%n_layer), m%attn_b(3*m%n_embd,m%n_layer), &
+    m%attn_proj_w(m%n_embd,m%n_embd,m%n_layer), m%attn_proj_b(m%n_embd,m%n_layer), &
+    m%ln1_b(m%n_embd,m%n_layer), m%ln1_g(m%n_embd,m%n_layer), &
+    m%ln2_b(m%n_embd,m%n_layer), m%ln2_g(m%n_embd,m%n_layer), &
+    m%lnf_b(m%n_embd), m%lnf_g(m%n_embd), &
+    m%decoder_idx(m%n_decoder_idx), m%decoder_txt(m%n_decoder_txt), &
+    m%vocab_idx(m%n_vocab_idx), m%vocab_txt(m%n_vocab_txt), &
+    m%byte_encoder(m%n_byte_encoder))
+read(u) m%wte, m%wpe, &
+    m%mlp_fc_w, m%mlp_fc_b, &
+    m%mlp_proj_w, m%mlp_proj_b, &
+    m%attn_w, m%attn_b, &
+    m%attn_proj_w, m%attn_proj_b, &
+    m%ln1_b, m%ln1_g, &
+    m%ln2_b, m%ln2_g, &
+    m%lnf_b, m%lnf_g, &
+    m%decoder_idx, m%decoder_txt, &
+    m%vocab_idx, m%vocab_txt, &
+    m%byte_encoder
 close(u)
 end subroutine
 
