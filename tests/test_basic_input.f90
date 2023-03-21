@@ -1,6 +1,8 @@
 program test_basic_input
-use driver, only: gpt2_driver
+use driver, only: gpt2_driver, model_t
 implicit none
+
+type(model_t) :: m
 
 integer, parameter :: input_ref(*) = [36235, 39141, 18765, 1143, 326, 9061, &
     561, 530, 1110, 1716, 845, 3665, 11, 475, 772, 339, 714, 407, 5967]
@@ -8,7 +10,7 @@ integer, parameter :: output_ref(*) = [703, 484, 561, 307, 1498, 284, 466, &
     523, 13, 198, 198, 1, 40, 892, 326, 262, 749, 1593, 1517, 318]
 integer, allocatable :: input(:), output(:)
 
-call gpt2_driver(input, output)
+call gpt2_driver(input, output, m)
 
 print *
 print *, "TESTS:"

@@ -83,25 +83,13 @@ read(u) m%wte, m%wpe, &
 close(u)
 end subroutine
 
-subroutine gpt2_driver(input, output)
+subroutine gpt2_driver(input, output, m)
 integer, allocatable, intent(out) :: input(:), output(:)
+type(model_t), intent(out) :: m
 character(:), allocatable :: input_txt
 integer :: n_tokens_to_generate
+real(dp) :: t1, t2
 call load_input("input", input_txt, n_tokens_to_generate)
-call gpt2_driver2(input_txt, n_tokens_to_generate, input, output)
-endsubroutine
-
-subroutine gpt2_driver2(input_txt, n_tokens_to_generate, input, output)
-character(*), intent(in) :: input_txt
-integer, intent(in) :: n_tokens_to_generate
-integer, allocatable, intent(out) :: input(:), output(:)
-type(model_t) :: m
-integer, allocatable :: byte_decoder(:)
-integer :: n_seq
-character(:), allocatable :: output_txt
-real(dp) :: t1, t2, t1o, t2o
-integer :: i
-logical :: use_cache
 
 ! Load the model
 print "(a)", "Loading the model..."
@@ -117,6 +105,21 @@ print "(a,i6)", "n_embd  =", m%n_embd
 print "(a,i6)", "n_layer =", m%n_layer
 print "(a,i6)", "n_head  =", m%n_head
 print *
+
+call gpt2_driver2(input_txt, n_tokens_to_generate, m, input, output)
+endsubroutine
+
+subroutine gpt2_driver2(input_txt, n_tokens_to_generate, m, input, output)
+character(*), intent(in) :: input_txt
+integer, intent(in) :: n_tokens_to_generate
+type(model_t), intent(in) :: m
+integer, allocatable, intent(out) :: input(:), output(:)
+integer, allocatable :: byte_decoder(:)
+integer :: n_seq
+character(:), allocatable :: output_txt
+real(dp) :: t1, t2, t1o, t2o
+integer :: i
+logical :: use_cache
 
 ! Compute byte_decoder:
 allocate(byte_decoder(0:maxval(m%byte_encoder)))
