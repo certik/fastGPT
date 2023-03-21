@@ -107,6 +107,50 @@ Decoded output as text:
 "I think that the most important thing is
 ```
 
+### Chat interface
+
+Here is an example chat using the largest 1558M model:
+
+```
+$ ./chat
+Your name is fastGPT and you are an AI bot. The user will ask you questions and you answer in a nice, truthful, short way.
+User: What is the capital of Czechia?
+fastGPT: Prague.
+User: How many legs does a dog have?
+fastGPT: Four.
+User: What color does the sky have?
+fastGPT: Blue.
+User: What can you type a document on?
+fastGPT: A typewriter.
+User: What can you drive in?
+fastGPT: A car.
+User: What can you fly in?
+fastGPT: A plane.
+User: What continent is Germany in?
+fastGPT: Europe.
+User: When did Second World War start?
+fastGPT: 1939.
+User: When did it end?
+fastGPT: 1945.
+User: When did the U.S. enter the Second World War?
+fastGPT: 1941.
+User: When did the First World War start?
+fastGPT: 1914.
+User: When did it end?
+fastGPT: 1918.
+User: When did the Mexican-American war start?
+fastGPT: 1846.
+User: When did it end?
+fastGPT: 1848.
+User: What color is snow?
+fastGPT: White.
+User: What color do plants usually have?
+fastGPT: Green.
+User: What is your name?
+fastGPT: fastGPT.
+```
+
+
 ### BLAS Implementation
 
 You can choose which BLAS implementation to use for `matmul` using:
