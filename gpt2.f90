@@ -234,13 +234,14 @@ end function
 function generate(n_tokens_to_generate, m, &
         n_seq, input, &
         use_cache, &
-        byte_decoder) result(output)
+        byte_decoder, stop_text) result(output)
 integer, intent(in) :: n_seq, n_tokens_to_generate
 type(model_t), intent(in) :: m
 integer, intent(in) :: input(n_seq)
 logical, intent(in) :: use_cache
 integer, intent(in) :: byte_decoder(:)
-integer :: output(n_tokens_to_generate)
+character(*), intent(in), optional :: stop_text ! Stop if you see this text
+integer, allocatable :: output(:)
 real(sp), allocatable :: logits(:,:)
 integer :: i
 integer :: n_seq2, n_seq_x
@@ -248,7 +249,11 @@ integer :: next_id
 integer, allocatable :: input2(:)
 logical :: use_kv_cache
 real(sp) :: kv_cache(m%n_embd,n_seq+n_tokens_to_generate,2,m%n_layer)
+character(:), allocatable :: output_txt, last_token
 allocate(input2(size(input)))
+if (present(stop_text)) then
+    output_txt = ""
+end if
 input2 = input
 do i = 1, n_tokens_to_generate
     if (use_cache) then
@@ -271,13 +276,19 @@ do i = 1, n_tokens_to_generate
             m%attn_w, m%attn_b, m%attn_proj_w, m%attn_proj_b, &
             m%ln1_g, m%ln1_b, m%ln2_g, m%ln2_b, m%lnf_g, m%lnf_b, use_kv_cache, kv_cache(:,:n_seq2,:,:))
     next_id = maxloc(logits(:,n_seq_x), dim=1)-1
-    write(*, fmt="(a)", advance="no") decode([next_id], m%decoder_idx, &
-        m%decoder_txt, byte_decoder)
     input2 = [input2, next_id]
+    last_token = decode([next_id], m%decoder_idx, &
+        m%decoder_txt, byte_decoder)
+    write(*, fmt="(a)", advance="no") last_token
+    if (present(stop_text)) then
+        output_txt = output_txt // last_token
+        if (output_txt(len(output_txt)-len(stop_text)+1:len(output_txt)) == stop_text) then
+            exit
+        end if
+    end if
     deallocate(logits)
 end do
 output = input2(n_seq+1:)
-print *
 end function
 
 end module
