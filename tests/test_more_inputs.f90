@@ -10,24 +10,37 @@ integer, parameter :: output_ref(*) = [1248, 5332, 287, 262, 7404, 286, &
 integer, allocatable :: input(:), output(:)
 
 call load_model("model.dat", m)
-call gpt2_driver2("Ondřej Čertík was born in ", 13, m, input, output)
 
+call gpt2_driver2("Ondřej Čertík was born in ", 13, m, input, output)
 print *
 print *, "TESTS:"
+call test(input, input_ref, "Input")
+call test(output, output_ref, "Output")
 
-if (all(input == input_ref)) then
-    print *, "Input tokens agree with reference results"
+call gpt2_driver2("San Francisco is ", 8, m, input, output)
+print *
+print *, "TESTS:"
+call test(input, [15017, 6033, 318], "Input")
+call test(output, [257, 1748, 286, 517, 621, 352, 1510, 661], "Output")
+
+call gpt2_driver2("Cars are ", 13, m, input, output)
+print *
+print *, "TESTS:"
+call test(input, [34, 945, 389], "Input")
+call test(output, [407, 3142, 284, 307, 973, 287, 262, 7647, 1256, 286, &
+    257, 7072, 13], "Output")
+
+contains
+
+subroutine test(a, a_ref, text)
+integer, intent(in) :: a(:), a_ref(:)
+character(*), intent(in) :: text
+if (all(a == a_ref)) then
+    print *, text, ": OK"
 else
-    print *, "Input tokens DO NOT agree with reference results"
+    print *, text, ": FAIL"
     error stop
 end if
-
-if (all(output == output_ref)) then
-    print *, "Output tokens agree with reference results"
-else
-    print *, "Output tokens DO NOT agree with reference results"
-    error stop
-end if
-
+end subroutine
 
 end program
