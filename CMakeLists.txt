@@ -67,23 +67,19 @@ else()
         omp_dummy.f90
     )
 endif()
-add_executable(gpt2 main.f90 ${SRC})
+add_library(fastgpt ${SRC})
 if (FASTGPT_BLAS STREQUAL "Accelerate")
-    target_link_options(gpt2 PRIVATE -framework accelerate)
-    target_link_libraries(gpt2 PRIVATE "$<IF:$<BOOL:${OMP_FOUND}>,p::omp,OpenMP::OpenMP_Fortran>")
+    target_link_options(fastgpt PUBLIC -framework accelerate)
+    target_link_libraries(fastgpt PUBLIC "$<IF:$<BOOL:${OMP_FOUND}>,p::omp,OpenMP::OpenMP_Fortran>")
 elseif (FASTGPT_BLAS STREQUAL "OpenBLAS")
-    target_link_libraries(gpt2 p::openblas
+    target_link_libraries(fastgpt p::openblas
         "$<IF:$<BOOL:${OMP_FOUND}>,p::omp,OpenMP::OpenMP_Fortran>")
 endif()
 
-add_executable(test_basic_input tests/test_basic_input.f90 ${SRC})
-if (FASTGPT_BLAS STREQUAL "Accelerate")
-    target_link_options(test_basic_input PRIVATE -framework accelerate)
-    target_link_libraries(test_basic_input PRIVATE "$<IF:$<BOOL:${OMP_FOUND}>,p::omp,OpenMP::OpenMP_Fortran>")
-elseif (FASTGPT_BLAS STREQUAL "OpenBLAS")
-    target_link_libraries(test_basic_input p::openblas
-        "$<IF:$<BOOL:${OMP_FOUND}>,p::omp,OpenMP::OpenMP_Fortran>")
-endif()
+add_executable(gpt2 main.f90)
+target_link_libraries(gpt2 fastgpt)
+add_executable(test_basic_input tests/test_basic_input.f90)
+target_link_libraries(test_basic_input fastgpt)
 add_test(test_basic_input ${PROJECT_BINARY_DIR}/test_basic_input)
 
 if(NOT PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
