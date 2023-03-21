@@ -66,9 +66,9 @@ allocate(m%wte(m%n_embd,m%n_vocab), m%wpe(m%n_embd,m%n_ctx), &
     m%ln1_b(m%n_embd,m%n_layer), m%ln1_g(m%n_embd,m%n_layer), &
     m%ln2_b(m%n_embd,m%n_layer), m%ln2_g(m%n_embd,m%n_layer), &
     m%lnf_b(m%n_embd), m%lnf_g(m%n_embd), &
-    m%decoder_idx(m%n_decoder_idx), m%decoder_txt(m%n_decoder_txt), &
-    m%vocab_idx(m%n_vocab_idx), m%vocab_txt(m%n_vocab_txt), &
-    m%byte_encoder(m%n_byte_encoder))
+    m%decoder_idx(0:m%n_decoder_idx-1), m%decoder_txt(m%n_decoder_txt), &
+    m%vocab_idx(0:m%n_vocab_idx-1), m%vocab_txt(m%n_vocab_txt), &
+    m%byte_encoder(0:m%n_byte_encoder-1))
 read(u) m%wte, m%wpe, &
     m%mlp_fc_w, m%mlp_fc_b, &
     m%mlp_proj_w, m%mlp_proj_b, &
