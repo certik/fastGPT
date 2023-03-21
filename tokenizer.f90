@@ -151,7 +151,6 @@ character, intent(in) :: vocab_txt(:)
 type(string), allocatable :: tokens(:)
 integer, allocatable :: pair_scores(:)
 integer :: not_found, merge_pair_idx
-type(string) :: s, s2
 integer :: i
 not_found = size(vocab_idx) + 10
 allocate(tokens(len(token)))
