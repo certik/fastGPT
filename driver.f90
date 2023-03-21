@@ -9,10 +9,41 @@ integer, parameter :: dp = kind(0.d0)
 
 contains
 
+subroutine load_input(filename, input_txt, n_tokens_to_generate)
+! Load the input from a namelist `filename`
+character(*), intent(in) :: filename
+character(:), allocatable, intent(out) :: input_txt
+integer, intent(out) :: n_tokens_to_generate
+character(1024) :: input_txt2
+integer :: u, ios
+namelist / input_fastGPT / n_tokens_to_generate
+allocate(character(0) :: input_txt)
+input_txt = ""
+open(newunit=u, file=filename, status="old")
+read(u, input_fastGPT)
+do
+    read(u, "(a)", iostat=ios) input_txt2
+    if (ios /= 0) exit
+    if (len(input_txt) > 0) input_txt = input_txt // char(10)
+    input_txt = input_txt // trim(input_txt2)
+end do
+close(u)
+end subroutine
+
 subroutine gpt2_driver(input, output)
 integer, allocatable, intent(out) :: input(:), output(:)
+character(:), allocatable :: input_txt
+integer :: n_tokens_to_generate
+call load_input("input", input_txt, n_tokens_to_generate)
+call gpt2_driver2(input_txt, n_tokens_to_generate, input, output)
+endsubroutine
+
+subroutine gpt2_driver2(input_txt, n_tokens_to_generate, input, output)
+character(*), intent(in) :: input_txt
+integer, intent(in) :: n_tokens_to_generate
+integer, allocatable, intent(out) :: input(:), output(:)
 integer :: n_vocab, n_ctx, n_seq, n_embd, n_layer, n_head, &
-    n_tokens_to_generate, n_decoder_idx, n_decoder_txt, &
+    n_decoder_idx, n_decoder_txt, &
     n_vocab_idx, n_vocab_txt, n_byte_encoder
 integer, allocatable :: decoder_idx(:), vocab_idx(:), byte_decoder(:)
 integer :: byte_encoder(0:255)
@@ -25,12 +56,10 @@ real(sp), allocatable :: wte(:,:), wpe(:,:), &
     ln2_b(:,:), ln2_g(:,:), &
     lnf_b(:), lnf_g(:)
 character, allocatable :: decoder_txt(:), vocab_txt(:)
-character(:), allocatable :: output_txt, input_txt
-character(1024) :: input_txt2
+character(:), allocatable :: output_txt
 real(dp) :: t1, t2, t1o, t2o
-integer :: u, i, ios
+integer :: u, i
 logical :: use_cache
-namelist / input_fastGPT / n_tokens_to_generate
 
 ! Load the model
 print "(a)", "Loading the model..."
@@ -82,18 +111,6 @@ do i = 0, size(byte_encoder)-1
     byte_decoder(byte_encoder(i)) = i
 end do
 
-! Load the input
-allocate(character(0) :: input_txt)
-input_txt = ""
-open(newunit=u, file="input", status="old")
-read(u, input_fastGPT)
-do
-    read(u, "(a)", iostat=ios) input_txt2
-    if (ios /= 0) exit
-    if (len(input_txt) > 0) input_txt = input_txt // char(10)
-    input_txt = input_txt // trim(input_txt2)
-end do
-close(u)
 print "(a)", "Input text"
 print "(a)", input_txt
 
