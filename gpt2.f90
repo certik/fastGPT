@@ -43,6 +43,21 @@ else
 end if
 end function
 
+elemental real function fast_erf(x) result(y)
+real(sp), intent(in) :: x
+real(sp) :: abs_x
+abs_x = abs(x)
+y = 1 - 1 / (1+ abs_x * (0.278393 + abs_x * (0.230389 + abs_x * (0.000972 + 0.078108*abs_x))))**4
+y = merge(y, -y, x >= 0)
+end function
+
+elemental real function fast_gelu(x) result(y)
+real(sp), intent(in) :: x
+real(sp), parameter :: inverse_root_2 = 1 / sqrt(2._sp)
+y = 0.5_sp * x * (1 + fast_erf(x * inverse_root_2))
+end function
+
+
 elemental real(sp) function gelu(x) result(y)
 real(sp), intent(in) :: x
 y = 0.5_sp * x * (1 + tanh(sqrt(2 / pi) * (x + 0.044715_sp * x**3)))
