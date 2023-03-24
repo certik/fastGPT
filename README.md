@@ -165,10 +165,17 @@ On Apple M1 Max, inference of the above input file (20 tokens):
                                     1 core  2 cores  4 cores  8 cores
 
     fastGPT (Accelerate, fast_tanh) 0.288s
+
     fastGPT (Accelerate)            0.299s
+    PyTorch (Accelerate)            0.346s
+
     fastGPT (OpenBLAS)              0.837s  0.514s    0.341s   0.339s
     PyTorch (OpenBLAS)              0.873s  0.539s    0.386s   0.392s
+
     fastGPT (Accelerate, no cache)  0.717s
+    picoGPT (Accelerate, no cache)  0.765s
+    PyTorch (Accelerate, no cache)  0.787s
+
     fastGPT (OpenBLAS, no cache)    2.343s  1.603s    1.209s   1.018s
     PyTorch (OpenBLAS, no cache)    2.356s  1.520s    1.104s   0.997s
     picoGPT (OpenBLAS, no cache)    2.427s  1.645s    1.272s   1.081s
