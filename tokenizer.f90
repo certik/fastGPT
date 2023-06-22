@@ -171,7 +171,7 @@ do
         pair_scores(i) = word_idx(tokens(i)%s // " " // tokens(i+1)%s, vocab_idx, vocab_txt)
         if (pair_scores(i) == -1) pair_scores(i) = not_found
     end do
-    merge_pair_idx = minloc(pair_scores, 1)
+!    merge_pair_idx = minloc(pair_scores, 1)
     if (pair_scores(merge_pair_idx) == not_found) then
         ! No token pair can be merged, so we are done:
         exit
