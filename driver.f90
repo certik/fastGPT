@@ -17,11 +17,11 @@ character(:), allocatable, intent(out) :: input_txt
 integer, intent(out) :: n_tokens_to_generate
 character(1024) :: input_txt2
 integer :: u, ios
-namelist / input_fastGPT / n_tokens_to_generate
+!namelist / input_fastGPT / n_tokens_to_generate
 allocate(character(0) :: input_txt)
 input_txt = ""
 open(newunit=u, file=filename, status="old")
-read(u, input_fastGPT)
+!read(u, input_fastGPT)
 do
     read(u, "(a)", iostat=ios) input_txt2
     if (ios /= 0) exit
