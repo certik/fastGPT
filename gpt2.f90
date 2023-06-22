@@ -173,13 +173,13 @@ end function
 function transformer_block(n_seq, n_seq_x, n_embd, x, mlp_fc_w, mlp_fc_b, mlp_proj_w, mlp_proj_b, &
         attn_w, attn_b, attn_proj_w, attn_proj_b, ln1_g, ln1_b, ln2_g, ln2_b, &
         n_head, use_kv_cache, kv_cache) result(y)
+integer, intent(in) :: n_head
+integer, intent(in) :: n_seq, n_seq_x, n_embd
 real(sp), intent(in) :: x(n_embd,n_seq_x), &
     mlp_fc_w(:,:), mlp_fc_b(:), &
     mlp_proj_w(:,:), mlp_proj_b(:), &
     attn_w(:,:), attn_b(:), attn_proj_w(:,:), attn_proj_b(:), &
     ln1_g(:), ln1_b(:), ln2_g(:), ln2_b(:)
-integer, intent(in) :: n_head
-integer, intent(in) :: n_seq, n_seq_x, n_embd
 real(sp) :: y(n_embd,n_seq_x)
 logical, intent(in) :: use_kv_cache
 real(sp), intent(inout) :: kv_cache(n_embd,n_seq,2)
