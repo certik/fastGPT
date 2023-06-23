@@ -52,17 +52,6 @@ allocate(m%wte(m%n_embd,m%n_vocab), m%wpe(m%n_embd,m%n_ctx), &
     m%decoder_idx(0:m%n_decoder_idx-1), m%decoder_txt(m%n_decoder_txt), &
     m%vocab_idx(0:m%n_vocab_idx-1), m%vocab_txt(m%n_vocab_txt), &
     m%byte_encoder(0:m%n_byte_encoder-1))
-read(u) m%wte, m%wpe, &
-    m%mlp_fc_w, m%mlp_fc_b, &
-    m%mlp_proj_w, m%mlp_proj_b, &
-    m%attn_w, m%attn_b, &
-    m%attn_proj_w, m%attn_proj_b, &
-    m%ln1_b, m%ln1_g, &
-    m%ln2_b, m%ln2_g, &
-    m%lnf_b, m%lnf_g, &
-    m%decoder_idx, m%decoder_txt, &
-    m%vocab_idx, m%vocab_txt, &
-    m%byte_encoder
 close(u)
 end subroutine
 
