@@ -53,7 +53,7 @@ real(sp), intent(in) :: x(:,:)
 real(sp) :: y(size(x,1),size(x,2))
 integer :: i
 do i = 1, size(x,2)
-    y(:,i) = exp(x(:,i) - maxval(x(:,i)))
+    y(:,i) = exp(x(:,i))
     y(:,i) = y(:,i) / sum(y(:,i))
 end do
 end function

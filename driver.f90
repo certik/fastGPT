@@ -105,7 +105,7 @@ integer :: i
 logical :: use_cache
 
 ! Compute byte_decoder:
-allocate(byte_decoder(0:maxval(m%byte_encoder)))
+allocate(byte_decoder(0:5))
 byte_decoder = 0
 do i = 0, size(m%byte_encoder)-1
     byte_decoder(m%byte_encoder(i)) = i
@@ -180,7 +180,7 @@ integer :: i
 logical :: use_cache
 ! TODO: move the decoder into model_t
 ! Compute byte_decoder:
-allocate(byte_decoder(0:maxval(m%byte_encoder)))
+allocate(byte_decoder(0:5))
 byte_decoder = 0
 do i = 0, size(m%byte_encoder)-1
     byte_decoder(m%byte_encoder(i)) = i
