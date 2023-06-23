@@ -275,7 +275,7 @@ do i = 1, n_tokens_to_generate
             m%mlp_fc_w, m%mlp_fc_b, m%mlp_proj_w, m%mlp_proj_b, &
             m%attn_w, m%attn_b, m%attn_proj_w, m%attn_proj_b, &
             m%ln1_g, m%ln1_b, m%ln2_g, m%ln2_b, m%lnf_g, m%lnf_b, use_kv_cache, kv_cache(:,:n_seq2,:,:))
-    next_id = maxloc(logits(:,n_seq_x), dim=1)-1
+!    next_id = maxloc(logits(:,n_seq_x), dim=1)-1
     input2 = [input2, next_id]
     last_token = decode([next_id], m%decoder_idx, &
         m%decoder_txt, byte_decoder)
