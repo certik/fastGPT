@@ -145,13 +145,13 @@ j = 1
 do while(one_more_pass)
     one_more_pass = .false.
     do i = j, size(tokens)-1
-        if (len(tokens(i)%s) == 1 .and. iachar(tokens(i)%s(1:1)) >= 128) then
+!        if (len(tokens(i)%s) == 1 .and. iachar(tokens(i)%s(1:1)) >= 128) then
             tokens = merge_pair(tokens, i)
             one_more_pass = .true.
             j = i + 1
 !            print *, "pass"
             exit
-        end if
+!        end if
     end do
 end do
 !print *, "tokens = ", (tokens(i)%s // " ", i=1,size(tokens))
@@ -169,7 +169,7 @@ integer :: i
 not_found = size(vocab_idx) + 10
 allocate(tokens(len(token)))
 do i = 1, len(token)
-    tokens(i)%s = token(i:i)
+!    tokens(i)%s = token(i:i)
 end do
 tokens = merge_utf8_pairs(tokens)
 do
@@ -182,7 +182,7 @@ do
     allocate(pair_scores(size(tokens)-1))
     ! Loop over pairs
     do i = 1, size(tokens)-1
-        pair_scores(i) = word_idx(tokens(i)%s // " " // tokens(i+1)%s, vocab_idx, vocab_txt)
+!        pair_scores(i) = word_idx(tokens(i)%s // " " // tokens(i+1)%s, vocab_idx, vocab_txt)
         if (pair_scores(i) == -1) pair_scores(i) = not_found
     end do
 !    merge_pair_idx = minloc(pair_scores, 1)
@@ -223,7 +223,7 @@ do
     end do
     bpe_tokens = bpe(tmp2, vocab_idx, vocab_txt)
     do j = 1, size(bpe_tokens)
-        tokens = [tokens, word_idx(bpe_tokens(j)%s, idx, decoder_txt)]
+!        tokens = [tokens, word_idx(bpe_tokens(j)%s, idx, decoder_txt)]
     end do
     deallocate(tmp2)
 end do
