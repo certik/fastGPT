@@ -36,12 +36,22 @@ subroutine load_model(filename, m)
 character(*), intent(in) :: filename
 type(model_t), intent(out) :: m
 integer :: u
-open(newunit=u, file=filename, form="unformatted", access="stream", status="old")
+!open(newunit=u, file=filename, form="unformatted", access="stream", status="old")
 !read(u) model_version
 !                    fastGPT (digits look similar to the letters they represent)
 ! model_version /= 0xfa51697
-read(u) m%n_vocab, m%n_ctx, m%n_embd, m%n_layer, m%n_head, m%n_decoder_idx, &
-    m%n_decoder_txt, m%n_vocab_idx, m%n_vocab_txt, m%n_byte_encoder
+!read(u) m%n_vocab, m%n_ctx, m%n_embd, m%n_layer, m%n_head, m%n_decoder_idx, &
+!    m%n_decoder_txt, m%n_vocab_idx, m%n_vocab_txt, m%n_byte_encoder
+m%n_vocab = 50000
+m%n_ctx = 1024
+m%n_embd = 768
+m%n_layer = 12
+m%n_head = 10
+m%n_decoder_idx = 5000
+m%n_decoder_txt = 5000
+m%n_vocab_idx = 1000
+m%n_vocab_txt = 1000
+m%n_byte_encoder = 1000
 allocate(m%wte(m%n_embd,m%n_vocab), m%wpe(m%n_embd,m%n_ctx), &
     m%mlp_fc_w(4*m%n_embd,m%n_embd,m%n_layer), m%mlp_fc_b(4*m%n_embd,m%n_layer), &
     m%mlp_proj_w(m%n_embd,4*m%n_embd,m%n_layer), m%mlp_proj_b(m%n_embd,m%n_layer), &
@@ -53,7 +63,28 @@ allocate(m%wte(m%n_embd,m%n_vocab), m%wpe(m%n_embd,m%n_ctx), &
     m%decoder_idx(0:m%n_decoder_idx-1), m%decoder_txt(m%n_decoder_txt), &
     m%vocab_idx(0:m%n_vocab_idx-1), m%vocab_txt(m%n_vocab_txt), &
     m%byte_encoder(0:m%n_byte_encoder-1))
-close(u)
+!close(u)
+m%wte = 1
+m%wpe = 1
+m%mlp_fc_w = 1
+m%mlp_fc_b = 1
+m%mlp_proj_w = 1
+m%mlp_proj_b = 1
+m%attn_w = 1
+m%attn_b = 1
+m%attn_proj_w = 1
+m%attn_proj_b = 1
+m%ln1_b = 1
+m%ln1_g = 1
+m%ln2_b = 1
+m%ln2_g = 1
+m%lnf_b = 1
+m%lnf_g = 1
+m%decoder_idx = 1
+m%decoder_txt = " "
+m%vocab_idx = 1
+m%vocab_txt = " "
+m%byte_encoder = 1
 end subroutine
 
 subroutine gpt2_driver(input, output, m)
