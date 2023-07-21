@@ -80,8 +80,8 @@ endif()
 add_executable(gpt2 main.f90)
 target_link_libraries(gpt2 fastgpt)
 
-add_executable(chat chat.f90)
-target_link_libraries(chat fastgpt)
+#add_executable(chat chat.f90)
+#target_link_libraries(chat fastgpt)
 
 add_executable(test_basic_input tests/test_basic_input.f90)
 target_link_libraries(test_basic_input fastgpt)
