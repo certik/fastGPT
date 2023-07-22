@@ -123,6 +123,7 @@ type(string), intent(in) :: intokens(:)
 type(string), allocatable :: tokens(:)
 integer :: i, j
 logical :: one_more_pass
+allocate(tokens(size(intokens)))
 tokens = intokens
 one_more_pass = .true.
 !print *, "merge_utf8_pairs:", size(tokens)
