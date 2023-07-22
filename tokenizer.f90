@@ -186,16 +186,18 @@ end do
 end function
 
 function encode(input, idx, decoder_txt, vocab_idx, vocab_txt, byte_encoder) &
-        result(tokens)
+        result(tokens2)
 character(*), intent(in) :: input
 integer, intent(in) :: idx(0:), vocab_idx(0:), byte_encoder(0:)
 character, intent(in) :: decoder_txt(:), vocab_txt(:)
-integer, allocatable :: tokens(:)
+integer, parameter :: max_tokens = 2048
+integer :: tokens(max_tokens)
+integer, allocatable :: tokens2(:)
 character(:), allocatable :: tmp, tmp2
 type(string), allocatable :: bpe_tokens(:)
-integer :: i, j, c
+integer :: i, j, c, n_tokens
+n_tokens = 0
 i = 1
-allocate(tokens(0))
 do
     tmp = next_token(input, i)
     if (tmp == "") exit
@@ -210,10 +212,14 @@ do
     end do
     bpe_tokens = bpe(tmp2, vocab_idx, vocab_txt)
     do j = 1, size(bpe_tokens)
-        tokens = [tokens, word_idx(bpe_tokens(j)%s, idx, decoder_txt)]
+        n_tokens = n_tokens + 1
+        if (n_tokens > max_tokens) error stop "exceeded max_tokens"
+        tokens(n_tokens) = word_idx(bpe_tokens(j)%s, idx, decoder_txt)
     end do
     deallocate(tmp2)
 end do
+allocate(tokens2(n_tokens))
+tokens2 = tokens(:n_tokens)
 end function
 
 function decode(tokens, idx, decoder_txt, byte_decoder) result(output)
