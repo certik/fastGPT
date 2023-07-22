@@ -42,6 +42,7 @@ integer, parameter :: current_model_mark = 262477463
 integer, parameter :: current_model_version = 1
 integer :: model_mark
 integer :: u
+integer, allocatable :: decoder_txt_i32(:), vocab_txt_i32(:)
 open(newunit=u, file=filename, form="unformatted", access="stream", status="old")
 read(u) model_mark
 if (model_mark /= current_model_mark) then
@@ -68,6 +69,7 @@ allocate(m%wte(m%n_embd,m%n_vocab), m%wpe(m%n_embd,m%n_ctx), &
     m%decoder_idx(0:m%n_decoder_idx-1), m%decoder_txt(m%n_decoder_txt), &
     m%vocab_idx(0:m%n_vocab_idx-1), m%vocab_txt(m%n_vocab_txt), &
     m%byte_encoder(0:m%n_byte_encoder-1))
+allocate(decoder_txt_i32(size(m%decoder_txt)/4), vocab_txt_i32(size(m%vocab_txt)/4))
 read(u) m%wte, m%wpe, &
     m%mlp_fc_w, m%mlp_fc_b, &
     m%mlp_proj_w, m%mlp_proj_b, &
@@ -76,8 +78,8 @@ read(u) m%wte, m%wpe, &
     m%ln1_b, m%ln1_g, &
     m%ln2_b, m%ln2_g, &
     m%lnf_b, m%lnf_g, &
-    m%decoder_idx, m%decoder_txt, &
-    m%vocab_idx, m%vocab_txt, &
+    m%decoder_idx, decoder_txt_i32, &
+    m%vocab_idx, vocab_txt_i32, &
     m%byte_encoder
 close(u)
 end subroutine
