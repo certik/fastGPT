@@ -219,7 +219,9 @@ do
     deallocate(tmp2)
 end do
 allocate(tokens2(n_tokens))
-tokens2 = tokens(:n_tokens)
+do i = 1, n_tokens
+    tokens2(i) = tokens(i)
+end do
 end function
 
 function decode(tokens, idx, decoder_txt, byte_decoder) result(output)
