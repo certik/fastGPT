@@ -143,7 +143,8 @@ print "(a,i4)", "n_seq                =", n_seq
 print "(a,i4)", "n_tokens_to_generate =", n_tokens_to_generate
 print *
 print "(a)", "Input tokens:"
-print "(1000(i6))", input
+!print "(1000(i6))", input
+print *, input
 print *
 
 if (n_seq + n_tokens_to_generate >= m%n_ctx) then
