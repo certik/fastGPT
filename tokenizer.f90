@@ -224,6 +224,7 @@ integer :: i, c
 allocate(character(0) :: output2) ! Fix GFortran warning
 output2 = ""
 do i = 1, size(tokens)
+    if (tokens(i) < 0) error stop "tokens(i) < 0"
     output2 = output2 // c2s(decoder_txt(idx(tokens(i))+1:idx(tokens(i)+1)))
 end do
 i = 1
