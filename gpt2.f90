@@ -22,6 +22,7 @@ type :: model_t
         lnf_b(:), lnf_g(:)
     integer, allocatable :: decoder_idx(:), vocab_idx(:), byte_encoder(:)
     character, allocatable :: decoder_txt(:), vocab_txt(:)
+    integer :: model_file_version
 end type
 
 contains

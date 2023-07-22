@@ -39,7 +39,7 @@ type(model_t), intent(out) :: m
 ! 0xfa51697 = 262477463
 integer, parameter :: current_model_mark = 262477463
 integer, parameter :: current_model_version = 1
-integer :: model_mark, model_version
+integer :: model_mark
 integer :: u
 open(newunit=u, file=filename, form="unformatted", access="stream", status="old")
 read(u) model_mark
@@ -48,9 +48,9 @@ if (model_mark /= current_model_mark) then
     print *, "Expected:", current_model_mark
     error stop "Invalid fastGPT model file"
 end if
-read(u) model_version
-if (model_version /= current_model_version) then
-    print *, "Found:", model_version
+read(u) m%model_file_version
+if (m%model_file_version /= current_model_version) then
+    print *, "Found:", m%model_file_version
     print *, "Expected:", current_model_version
     error stop "Incompatible model version"
 end if
@@ -94,7 +94,7 @@ print "(a)", "Loading the model..."
 call cpu_time(t1)
 call load_model("model.dat", m)
 call cpu_time(t2)
-print "(a,f8.3,a)", "    done. Time:", t2-t1, "s"
+print "(a,f8.3,a,i2)", "    done. Time:", t2-t1, "s, Model file version:", m%model_file_version
 print *
 print "(a)", "Model parameters:"
 print "(a,i6)", "n_vocab =", m%n_vocab
