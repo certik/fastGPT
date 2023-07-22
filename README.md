@@ -54,6 +54,11 @@ subsequent runs:
 
     python create_model.py --models_dir "models" --model_size "124M"
 
+Alternatively, download the fastGPT model directly from
+https://huggingface.co/datasets/certik/fastGPT, e.g.:
+
+    curl -O -L https://huggingface.co/datasets/certik/fastGPT/resolve/main/model_fastgpt_124M_v1.dat
+
 Now you can modify the `input` file to change the input string and set other
 parameters.
 
