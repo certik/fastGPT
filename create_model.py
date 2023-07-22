@@ -155,9 +155,12 @@ def convert(params, n_head, n_ctx, idx, decoder_txt,
     n_vocab = np.size(wte, 0)
     assert np.size(wte, 1) == n_embd
 
+    model_type = 0xfa51697 # fastGPT
+    model_version = 1
+
     # Save the model
     f = open("model.dat", "w")
-    np.array([n_vocab, n_ctx, n_embd, n_layer, n_head,
+    np.array([model_type, model_version, n_vocab, n_ctx, n_embd, n_layer, n_head,
         len(idx),len(decoder_txt.encode("utf-8")),
         len(vocab_idx),len(vocab_txt.encode("utf-8")),len(byte_decoder)], dtype=np.int32).tofile(f)
     wte.tofile(f); wpe.tofile(f)

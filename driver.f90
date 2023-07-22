@@ -34,11 +34,26 @@ end subroutine
 subroutine load_model(filename, m)
 character(*), intent(in) :: filename
 type(model_t), intent(out) :: m
+! We use the following fastGPT model type number
+!   fastGPT (digits look similar to the letters they represent)
+! 0xfa51697 = 262477463
+integer, parameter :: current_model_mark = 262477463
+integer, parameter :: current_model_version = 1
+integer :: model_mark, model_version
 integer :: u
 open(newunit=u, file=filename, form="unformatted", access="stream", status="old")
-!read(u) model_version
-!                    fastGPT (digits look similar to the letters they represent)
-! model_version /= 0xfa51697
+read(u) model_mark
+if (model_mark /= current_model_mark) then
+    print *, "Found:", model_mark
+    print *, "Expected:", current_model_mark
+    error stop "Invalid fastGPT model file"
+end if
+read(u) model_version
+if (model_version /= current_model_version) then
+    print *, "Found:", model_version
+    print *, "Expected:", current_model_version
+    error stop "Incompatible model version"
+end if
 read(u) m%n_vocab, m%n_ctx, m%n_embd, m%n_layer, m%n_head, m%n_decoder_idx, &
     m%n_decoder_txt, m%n_vocab_idx, m%n_vocab_txt, m%n_byte_encoder
 allocate(m%wte(m%n_embd,m%n_vocab), m%wpe(m%n_embd,m%n_ctx), &
