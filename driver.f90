@@ -38,7 +38,7 @@ type(model_t), intent(out) :: m
 !   fastGPT (digits look similar to the letters they represent)
 ! 0xfa51697 = 262477463
 integer, parameter :: current_model_mark = 262477463
-integer, parameter :: current_model_version = 1
+integer, parameter :: current_model_version = 2
 integer :: model_mark
 integer :: u
 open(newunit=u, file=filename, form="unformatted", access="stream", status="old")

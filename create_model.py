@@ -156,7 +156,7 @@ def convert(params, n_head, n_ctx, idx, decoder_txt,
     assert np.size(wte, 1) == n_embd
 
     model_type = 0xfa51697 # fastGPT
-    model_version = 1
+    model_version = 2
 
     # Save the model
     f = open("model.dat", "w")
