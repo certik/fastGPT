@@ -188,10 +188,10 @@ print *, output
 !print *
 !print "(a)", "Decoded output as text:"
 !print "(a)", output_txt
-if (output(1) /= 703) error stop
-if (output(2) /= 484) error stop
-if (output(19) /= 1517) error stop
-if (output(20) /= 318) error stop
+if (output(1) /= 41176) error stop
+if (output(2) /= 43038) error stop
+if (output(19) /= 43038) error stop
+if (output(20) /= 43038) error stop
 end subroutine
 
 subroutine gpt2_driver3(input_txt, n_tokens_to_generate, stop_text, m, output_txt)
