@@ -82,6 +82,7 @@ read(u) m%wte, m%wpe, &
     m%vocab_idx, vocab_txt_i32, &
     m%byte_encoder
 close(u)
+stop "OK"
 end subroutine
 
 subroutine gpt2_driver(input, output, m)
