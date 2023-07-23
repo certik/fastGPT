@@ -152,19 +152,18 @@ else
     end do
 end if
 x2 = linear(x, attn_w, attn_b)
-associate ( &
-        q => x2((1-1)*n_embd+1:1*n_embd,:), &
-        k => x2((2-1)*n_embd+1:2*n_embd,:), &
-        v => x2((3-1)*n_embd+1:3*n_embd,:)  &
-    )
-    if (use_kv_cache) then
-        kv_cache(:,n_seq,1) = k(:,1)
-        kv_cache(:,n_seq,2) = v(:,1)
-    else
-        kv_cache(:,:,1) = k
-        kv_cache(:,:,2) = v
-    end if
-end associate
+if (use_kv_cache) then
+    error stop
+    !kv_cache(:,n_seq,1) = k(:,1)
+    !kv_cache(:,n_seq,2) = v(:,1)
+else
+    do i = 1, n_seq
+    do j = 1, n_embd
+        kv_cache(j,i,1) = x2((2-1)*n_embd+j,i)
+        kv_cache(j,i,2) = x2((3-1)*n_embd+j,i)
+    end do
+    end do
+end if
 associate ( &
         q => x2((1-1)*n_embd+1:1*n_embd,:), &
         k => kv_cache(:,:,1), &
