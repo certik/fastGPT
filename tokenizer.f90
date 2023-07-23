@@ -131,7 +131,7 @@ function merge_utf8_pairs(intokens) result(tokens)
 ! Merge all UTF-8 character pairs
 type(string), intent(in) :: intokens(:)
 type(string), allocatable :: tokens(:)
-integer :: i, j
+integer :: i, j, ic
 logical :: one_more_pass
 allocate(tokens(size(intokens)))
 tokens = intokens
@@ -142,12 +142,15 @@ j = 1
 do while(one_more_pass)
     one_more_pass = .false.
     do i = j, size(tokens)-1
-        if (len(tokens(i)%s) == 1 .and. iachar(tokens(i)%s(1:1)) >= 128) then
-            tokens = merge_pair(tokens, i)
-            one_more_pass = .true.
-            j = i + 1
-!            print *, "pass"
-            exit
+        if (len(tokens(i)%s) == 1) then
+            ic = iachar(tokens(i)%s(1:1))
+            if (ic < 0) ic = ic + 256
+            if (ic >= 128) then
+                tokens = merge_pair(tokens, i)
+                one_more_pass = .true.
+                j = i + 1
+                exit
+            end if
         end if
     end do
 end do
