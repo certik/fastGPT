@@ -173,24 +173,24 @@ y = linear(y, proj_w, proj_b)
 end function
 
 
-function transformer_block(n_seq, n_seq_x, n_embd, x, mlp_fc_w, mlp_fc_b, mlp_proj_w, mlp_proj_b, &
+subroutine transformer_block(n_seq, n_seq_x, n_embd, x, mlp_fc_w, mlp_fc_b, mlp_proj_w, mlp_proj_b, &
         attn_w, attn_b, attn_proj_w, attn_proj_b, ln1_g, ln1_b, ln2_g, ln2_b, &
-        n_head, use_kv_cache, kv_cache) result(y)
-real(sp), intent(in) :: x(n_embd,n_seq_x), &
+        n_head, use_kv_cache, kv_cache)
+real(sp), intent(inout) :: x(n_embd,n_seq_x)
+real(sp), intent(in) :: &
     mlp_fc_w(:,:), mlp_fc_b(:), &
     mlp_proj_w(:,:), mlp_proj_b(:), &
     attn_w(:,:), attn_b(:), attn_proj_w(:,:), attn_proj_b(:), &
     ln1_g(:), ln1_b(:), ln2_g(:), ln2_b(:)
 integer, intent(in) :: n_head
 integer, intent(in) :: n_seq, n_seq_x, n_embd
-real(sp) :: y(n_embd,n_seq_x)
 logical, intent(in) :: use_kv_cache
 real(sp), intent(inout) :: kv_cache(n_embd,n_seq,2)
-y = x + mha(n_seq, n_seq_x, n_embd, layer_norm(x, ln1_g, ln1_b, 1e-5_sp), &
+x = x + mha(n_seq, n_seq_x, n_embd, layer_norm(x, ln1_g, ln1_b, 1e-5_sp), &
     attn_w, attn_b, attn_proj_w, attn_proj_b, n_head, use_kv_cache, kv_cache)
-y = y + ffn(layer_norm(y, ln2_g, ln2_b, 1e-5_sp), &
+x = x + ffn(layer_norm(x, ln2_g, ln2_b, 1e-5_sp), &
     mlp_fc_w, mlp_fc_b, mlp_proj_w, mlp_proj_b)
-end function
+end subroutine
 
 subroutine gpt2(y, n_vocab, n_ctx, n_seq, n_seq_x, n_embd, n_layer, n_head, input, &
         wte, wpe, &
@@ -226,12 +226,12 @@ end if
 print *, "It fails below:"
 do i = 1, n_layer
     print *, i ! Never gets printed
-!    x = transformer_block(n_seq, n_seq_x, n_embd, x, &
-!        mlp_fc_w(:,:,i), mlp_fc_b(:,i), &
-!        mlp_proj_w(:,:,i), mlp_proj_b(:,i), &
-!        attn_w(:,:,i), attn_b(:,i), attn_proj_w(:,:,i), attn_proj_b(:,i), &
-!        ln1_g(:,i), ln1_b(:,i), ln2_g(:,i), ln2_b(:,i), &
-!        n_head, use_kv_cache, kv_cache(:,:,:,i))
+    call transformer_block(n_seq, n_seq_x, n_embd, x, &
+        mlp_fc_w(:,:,i), mlp_fc_b(:,i), &
+        mlp_proj_w(:,:,i), mlp_proj_b(:,i), &
+        attn_w(:,:,i), attn_b(:,i), attn_proj_w(:,:,i), attn_proj_b(:,i), &
+        ln1_g(:,i), ln1_b(:,i), ln2_g(:,i), ln2_b(:,i), &
+        n_head, use_kv_cache, kv_cache(:,:,:,i))
 end do
 x = layer_norm(x, lnf_g, lnf_b, 1e-5)
 !y = matmul(transpose(wte), x)
