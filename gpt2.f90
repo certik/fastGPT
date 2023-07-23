@@ -238,7 +238,9 @@ else
     end do
 end if
 !print *, "It fails below:"
-do i = 1, n_layer
+do j = 1, n_layer
+    i = j
+    !i = 1
 !    print *, i ! Never gets printed
     call transformer_block(n_seq, n_seq_x, n_embd, x, &
         mlp_fc_w(:,:,i), mlp_fc_b(:,i), &
