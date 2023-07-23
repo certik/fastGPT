@@ -147,6 +147,11 @@ print "(a)", "Input tokens:"
 !print "(1000(i6))", input
 print *, input
 print *
+if (n_seq /= 19) error stop
+if (input(1) /= 36235) error stop
+if (input(2) /= 39141) error stop
+if (input(18) /= 407) error stop
+if (input(19) /= 5967) error stop
 
 if (n_seq + n_tokens_to_generate >= m%n_ctx) then
     print *, "The maximum sequence length of the model was surpassed."
