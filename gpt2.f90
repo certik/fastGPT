@@ -224,12 +224,12 @@ end if
 print *, "It fails below:"
 do i = 1, n_layer
     print *, i ! Never gets printed
-    x = transformer_block(n_seq, n_seq_x, n_embd, x, &
-        mlp_fc_w(:,:,i), mlp_fc_b(:,i), &
-        mlp_proj_w(:,:,i), mlp_proj_b(:,i), &
-        attn_w(:,:,i), attn_b(:,i), attn_proj_w(:,:,i), attn_proj_b(:,i), &
-        ln1_g(:,i), ln1_b(:,i), ln2_g(:,i), ln2_b(:,i), &
-        n_head, use_kv_cache, kv_cache(:,:,:,i))
+!    x = transformer_block(n_seq, n_seq_x, n_embd, x, &
+!        mlp_fc_w(:,:,i), mlp_fc_b(:,i), &
+!        mlp_proj_w(:,:,i), mlp_proj_b(:,i), &
+!        attn_w(:,:,i), attn_b(:,i), attn_proj_w(:,:,i), attn_proj_b(:,i), &
+!        ln1_g(:,i), ln1_b(:,i), ln2_g(:,i), ln2_b(:,i), &
+!        n_head, use_kv_cache, kv_cache(:,:,:,i))
 end do
 x = layer_norm(x, lnf_g, lnf_b, 1e-5)
 !y = matmul(transpose(wte), x)
