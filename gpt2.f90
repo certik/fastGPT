@@ -170,8 +170,12 @@ end if
 ! Perform attention over each head
 do l = 1, n_head
     q = x2((l-1)*n_embd/n_head+1:l*n_embd/n_head,:)
-    k = kv_cache((l-1)*n_embd/n_head+1:l*n_embd/n_head,:,1)
-    v = kv_cache((l-1)*n_embd/n_head+1:l*n_embd/n_head,:,2)
+    do i = 1, n_seq
+    do j = 1, n_embd/n_head
+        k(j,i) = kv_cache((l-1)*n_embd/n_head+j,i,1)
+        v(j,i) = kv_cache((l-1)*n_embd/n_head+j,i,2)
+    end do
+    end do
     call attention(yy, n_embd/n_head, n_seq, n_seq_x, q, k, v, causal_mask)
     y((l-1)*n_embd/n_head+1:l*n_embd/n_head,:) = yy
 end do
