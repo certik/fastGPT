@@ -153,9 +153,10 @@ else
 end if
 x2 = linear(x, attn_w, attn_b)
 if (use_kv_cache) then
-    error stop
-    !kv_cache(:,n_seq,1) = k(:,1)
-    !kv_cache(:,n_seq,2) = v(:,1)
+    do j = 1, n_embd
+        kv_cache(j,n_seq,1) = x2((2-1)*n_embd+j,1)
+        kv_cache(j,n_seq,2) = x2((3-1)*n_embd+j,1)
+    end do
 else
     do i = 1, n_seq
     do j = 1, n_embd
