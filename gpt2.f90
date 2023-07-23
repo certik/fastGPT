@@ -118,10 +118,15 @@ integer, intent(in) :: n_embd_head, n_seq, n_seq_x
 real(sp), intent(in) :: q(n_embd_head,n_seq_x), k(n_embd_head,n_seq), v(n_embd_head,n_seq), mask(n_seq,n_seq_x)
 real(sp), intent(out) :: y(n_embd_head,n_seq_x)
 real(sp) :: tmp(n_seq,n_seq_x)
+integer :: i, j
 !tmp = matmul(transpose(k), q)
 !call matmul_2d(transpose(k), q, tmp)
 call matmul_2d_t(k, q, tmp)
-tmp = tmp / sqrt(real(n_embd_head,sp)) + mask
+do i = 1, n_seq_x
+do j = 1, n_seq
+    tmp(j,i) = tmp(j,i) / sqrt(real(n_embd_head,sp)) + mask(j,i)
+end do
+end do
 tmp = softmax(tmp)
 call matmul_2d(v, tmp, y)
 end subroutine
