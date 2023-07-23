@@ -63,7 +63,7 @@ function layer_norm(x, g, b, eps) result(y)
 real(sp), intent(in) :: x(:,:), g(:), b(:), eps
 real(sp) :: y(size(x,1),size(x,2))
 real(sp) :: mean(size(x,2)), variance(size(x,2))
-integer :: i
+integer :: i, j
 do i = 1, size(x,2)
     mean(i) = sum(x(:,i)) / size(x,1)
     variance(i) = sum((x(:,i) - mean(i))**2) / size(x,1)
@@ -73,8 +73,10 @@ end do
 !    y(i,:) = g(i) * y(i,:) + b(i)
 !end do
 do i = 1, size(x,2)
-    y(:,i) = (x(:,i) - mean(i)) / sqrt(variance(i) + eps)
-    y(:,i) = g(:) * y(:,i) + b(:)
+    do j = 1, size(x,1)
+        y(j,i) = (x(j,i) - mean(i)) / sqrt(variance(i) + eps)
+        y(j,i) = g(j) * y(j,i) + b(j)
+    end do
 end do
 end function
 
