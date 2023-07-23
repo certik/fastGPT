@@ -13,7 +13,7 @@ character(:), allocatable :: y
 integer :: i
 allocate(character(size(x)) :: y)
 do i = 1, size(x)
-    y(i:i) = char(x(i))
+    y(i:i) = char(int(x(i),4))
 end do
 end function
 
