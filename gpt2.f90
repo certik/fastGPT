@@ -194,9 +194,14 @@ integer, intent(in) :: n_seq, n_seq_x, n_embd
 logical, intent(in) :: use_kv_cache
 real(sp) :: y(n_embd,n_seq_x)
 real(sp), intent(inout) :: kv_cache(n_embd,n_seq,2)
-x = x + mha(n_seq, n_seq_x, n_embd, layer_norm(x, ln1_g, ln1_b, 1e-5_sp), &
+call layer_norm(y, x, ln1_g, ln1_b, 1e-5_sp)
+x = x + mha(n_seq, n_seq_x, n_embd, y, &
     attn_w, attn_b, attn_proj_w, attn_proj_b, n_head, use_kv_cache, kv_cache)
-y = layer_norm(x, ln2_g, ln2_b, 1e-5_sp)
+!print *, "In: ", x(1,1), ln2_g(1), ln2_g(size(ln2_g)), ln2_b(1), ln2_b(size(ln2_b))
+call layer_norm(y, x, ln2_g, ln2_b, 1e-5_sp)
+!print *, "Out1:", y(1,1)
+!x = y
+!print *, "Out2:", x(1,1)
 call ffn(x, y, mlp_fc_w, mlp_fc_b, mlp_proj_w, mlp_proj_b)
 end subroutine
 
@@ -241,7 +246,9 @@ do i = 1, n_layer
         attn_w(:,:,i), attn_b(:,i), attn_proj_w(:,:,i), attn_proj_b(:,i), &
         ln1_g(:,i), ln1_b(:,i), ln2_g(:,i), ln2_b(:,i), &
         n_head, use_kv_cache, kv_cache(:,:,:,i))
+!    print *, x(1,1)
 end do
+!stop "OK"
 call layer_norm(yy, x, lnf_g, lnf_b, 1e-5)
 x = yy
 !y = matmul(transpose(wte), x)
