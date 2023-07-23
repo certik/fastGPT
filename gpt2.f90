@@ -124,9 +124,8 @@ call matmul_2d_t(k, q, tmp)
 call matmul_2d(v, softmax(tmp / sqrt(real(n_embd_head,sp)) + mask), y)
 end function
 
-function mha(n_seq, n_seq_x, n_embd, x, attn_w, attn_b, proj_w, proj_b, n_head, &
-            use_kv_cache, kv_cache) &
-        result(y)
+subroutine mha(y, n_seq, n_seq_x, n_embd, x, attn_w, attn_b, proj_w, proj_b, n_head, &
+            use_kv_cache, kv_cache)
 integer, intent(in) :: n_seq, n_seq_x, n_embd
 real(sp), intent(in) :: x(n_embd,n_seq_x), &
     attn_w(3*n_embd,n_embd), attn_b(3*n_embd), &
@@ -134,7 +133,7 @@ real(sp), intent(in) :: x(n_embd,n_seq_x), &
 real(sp), intent(inout) :: kv_cache(n_embd,n_seq,2)
 integer, intent(in) :: n_head
 logical, intent(in) :: use_kv_cache
-real(sp) :: y(n_embd,n_seq_x)
+real(sp), intent(out) :: y(n_embd,n_seq_x)
 real(sp) :: causal_mask(n_seq,n_seq_x)
 real(sp) :: x2(3*n_embd,n_seq_x)
 integer :: i, j
@@ -183,7 +182,7 @@ associate ( &
 end associate
 ! Out projection
 y = linear(y, proj_w, proj_b)
-end function
+end subroutine
 
 
 subroutine transformer_block(n_seq, n_seq_x, n_embd, x, mlp_fc_w, mlp_fc_b, mlp_proj_w, mlp_proj_b, &
@@ -199,10 +198,12 @@ integer, intent(in) :: n_head
 integer, intent(in) :: n_seq, n_seq_x, n_embd
 logical, intent(in) :: use_kv_cache
 real(sp) :: y(n_embd,n_seq_x)
+real(sp) :: yy(n_embd,n_seq_x)
 real(sp), intent(inout) :: kv_cache(n_embd,n_seq,2)
 call layer_norm(y, x, ln1_g, ln1_b, 1e-5_sp)
-x = x + mha(n_seq, n_seq_x, n_embd, y, &
+call mha(yy, n_seq, n_seq_x, n_embd, y, &
     attn_w, attn_b, attn_proj_w, attn_proj_b, n_head, use_kv_cache, kv_cache)
+x = x + yy
 !print *, "In: ", x(1,1), ln2_g(1), ln2_g(size(ln2_g)), ln2_b(1), ln2_b(size(ln2_b))
 call layer_norm(y, x, ln2_g, ln2_b, 1e-5_sp)
 !print *, "Out1:", y(1,1)
