@@ -138,7 +138,7 @@ real(sp) :: causal_mask(n_seq,n_seq_x)
 real(sp) :: x2(3*n_embd,n_seq_x)
 real(sp) :: q(n_embd/n_head,n_seq_x), k(n_embd/n_head,n_seq), v(n_embd/n_head,n_seq)
 real(sp) :: yy(n_embd/n_head,n_seq_x)
-integer :: i, j
+integer :: i, j, l
 ! Mask
 if (use_kv_cache) then
     causal_mask = 0
@@ -168,12 +168,12 @@ else
     end do
 end if
 ! Perform attention over each head
-do i = 1, n_head
-    q = x2((i-1)*n_embd/n_head+1:i*n_embd/n_head,:)
-    k = kv_cache((i-1)*n_embd/n_head+1:i*n_embd/n_head,:,1)
-    v = kv_cache((i-1)*n_embd/n_head+1:i*n_embd/n_head,:,2)
+do l = 1, n_head
+    q = x2((l-1)*n_embd/n_head+1:l*n_embd/n_head,:)
+    k = kv_cache((l-1)*n_embd/n_head+1:l*n_embd/n_head,:,1)
+    v = kv_cache((l-1)*n_embd/n_head+1:l*n_embd/n_head,:,2)
     call attention(yy, n_embd/n_head, n_seq, n_seq_x, q, k, v, causal_mask)
-    y((i-1)*n_embd/n_head+1:i*n_embd/n_head,:) = yy
+    y((l-1)*n_embd/n_head+1:l*n_embd/n_head,:) = yy
 end do
 ! Out projection
 y = linear(y, proj_w, proj_b)
