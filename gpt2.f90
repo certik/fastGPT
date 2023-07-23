@@ -92,13 +92,13 @@ do i = 1, size(y,2)
 end do
 end function
 
-function ffn(x, fc_w, fc_b, proj_w, proj_b) result(y)
+subroutine ffn(y, x, fc_w, fc_b, proj_w, proj_b)
 real(sp), intent(in) :: x(:,:), fc_w(:,:), fc_b(:), proj_w(:,:), proj_b(:)
-real(sp) :: y(size(x,1),size(x,2))
+real(sp), intent(inout) :: y(size(x,1),size(x,2))
 !real(sp) :: a(4*size(x,1),size(x,2))
 !a = gelu(linear(x, fc_w, fc_b))
-y = linear(gelu(linear(x, fc_w, fc_b)), proj_w, proj_b)
-end function
+y = y + linear(gelu(linear(x, fc_w, fc_b)), proj_w, proj_b)
+end subroutine
 
 function attention(n_embd_head,n_seq,n_seq_x, q, k, v, mask) result(y)
 integer, intent(in) :: n_embd_head, n_seq, n_seq_x
@@ -185,11 +185,12 @@ real(sp), intent(in) :: &
 integer, intent(in) :: n_head
 integer, intent(in) :: n_seq, n_seq_x, n_embd
 logical, intent(in) :: use_kv_cache
+real(sp) :: y(n_embd,n_seq_x)
 real(sp), intent(inout) :: kv_cache(n_embd,n_seq,2)
 x = x + mha(n_seq, n_seq_x, n_embd, layer_norm(x, ln1_g, ln1_b, 1e-5_sp), &
     attn_w, attn_b, attn_proj_w, attn_proj_b, n_head, use_kv_cache, kv_cache)
-x = x + ffn(layer_norm(x, ln2_g, ln2_b, 1e-5_sp), &
-    mlp_fc_w, mlp_fc_b, mlp_proj_w, mlp_proj_b)
+y = layer_norm(x, ln2_g, ln2_b, 1e-5_sp)
+call ffn(x, y, mlp_fc_w, mlp_fc_b, mlp_proj_w, mlp_proj_b)
 end subroutine
 
 subroutine gpt2(y, n_vocab, n_ctx, n_seq, n_seq_x, n_embd, n_layer, n_head, input, &
