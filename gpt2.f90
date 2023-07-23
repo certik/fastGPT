@@ -90,21 +90,27 @@ end subroutine
 function linear(x, w, b) result(y)
 real(sp), intent(in) :: x(:,:), w(:,:), b(:)
 real(sp) :: y(size(b,1),size(x,2))
-integer :: i
+integer :: i, j
 !y = matmul(w, x) + spread(b, 2, size(x,2))
 !y = matmul(w, x)
 call matmul_2d(w, x, y)
 do i = 1, size(y,2)
-    y(:,i) = y(:,i) + b(:)
+    do j = 1, size(y,1)
+        y(j,i) = y(j,i) + b(j)
+    end do
 end do
 end function
 
 subroutine ffn(y, x, fc_w, fc_b, proj_w, proj_b)
 real(sp), intent(in) :: x(:,:), fc_w(:,:), fc_b(:), proj_w(:,:), proj_b(:)
 real(sp), intent(inout) :: y(size(x,1),size(x,2))
-!real(sp) :: a(4*size(x,1),size(x,2))
-!a = gelu(linear(x, fc_w, fc_b))
-y = y + linear(gelu(linear(x, fc_w, fc_b)), proj_w, proj_b)
+real(sp) :: yy(size(x,1),size(x,2))
+real(sp) :: a(4*size(x,1),size(x,2))
+real(sp) :: aa(4*size(x,1),size(x,2))
+aa = linear(x, fc_w, fc_b)
+a = gelu(aa)
+yy = linear(a, proj_w, proj_b)
+y = y + yy
 end subroutine
 
 function attention(n_embd_head,n_seq,n_seq_x, q, k, v, mask) result(y)
