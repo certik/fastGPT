@@ -183,11 +183,15 @@ call cpu_time(t2)
 print "(a,f8.3,a,f4.2,a)", "    done. Time:", t2o-t1o, "s (", (t2-t1)/(t2o-t1o), "x)"
 print *
 print "(a)", "Output tokens:"
-print "(1000(i6))", output
+print *, output
 output_txt = decode(output, m%decoder_idx, m%decoder_txt, byte_decoder)
 print *
 print "(a)", "Decoded output as text:"
 print "(a)", output_txt
+if (output(1) /= 703) error stop
+if (output(2) /= 484) error stop
+if (output(19) /= 1517) error stop
+if (output(20) /= 318) error stop
 end subroutine
 
 subroutine gpt2_driver3(input_txt, n_tokens_to_generate, stop_text, m, output_txt)
