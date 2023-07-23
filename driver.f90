@@ -147,6 +147,7 @@ print "(a)", "Input tokens:"
 !print "(1000(i6))", input
 print *, input
 print *
+stop "OK"
 
 if (n_seq + n_tokens_to_generate >= m%n_ctx) then
     print *, "The maximum sequence length of the model was surpassed."
