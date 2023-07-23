@@ -113,16 +113,16 @@ yy = linear(a, proj_w, proj_b)
 y = y + yy
 end subroutine
 
-function attention(n_embd_head,n_seq,n_seq_x, q, k, v, mask) result(y)
+subroutine attention(y, n_embd_head,n_seq,n_seq_x, q, k, v, mask)
 integer, intent(in) :: n_embd_head, n_seq, n_seq_x
 real(sp), intent(in) :: q(n_embd_head,n_seq_x), k(n_embd_head,n_seq), v(n_embd_head,n_seq), mask(n_seq,n_seq_x)
-real(sp) :: y(n_embd_head,n_seq_x)
+real(sp), intent(out) :: y(n_embd_head,n_seq_x)
 real(sp) :: tmp(n_seq,n_seq_x)
 !tmp = matmul(transpose(k), q)
 !call matmul_2d(transpose(k), q, tmp)
 call matmul_2d_t(k, q, tmp)
 call matmul_2d(v, softmax(tmp / sqrt(real(n_embd_head,sp)) + mask), y)
-end function
+end subroutine
 
 subroutine mha(y, n_seq, n_seq_x, n_embd, x, attn_w, attn_b, proj_w, proj_b, n_head, &
             use_kv_cache, kv_cache)
@@ -167,7 +167,7 @@ else
 end if
 ! Perform attention over each head
 do i = 1, n_head
-    y((i-1)*n_embd/n_head+1:i*n_embd/n_head,:) = attention( &
+    call attention(y((i-1)*n_embd/n_head+1:i*n_embd/n_head,:), &
         n_embd/n_head, n_seq, n_seq_x, &
         x2((i-1)*n_embd/n_head+1:i*n_embd/n_head,:), &
         kv_cache((i-1)*n_embd/n_head+1:i*n_embd/n_head,:,1), &
