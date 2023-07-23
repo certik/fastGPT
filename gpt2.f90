@@ -58,7 +58,10 @@ do i = 1, size(x,2)
     do j = 1, size(x,1)
         y(j,i) = exp(x(j,i) - maxval(x(:,i)))
     end do
-    s = sum(y(:,i))
+    s = 0
+    do j = 1, size(x,1)
+        s = s + y(j,i)
+    end do
     do j = 1, size(x,1)
         y(j,i) = y(j,i) / s
     end do
