@@ -36,6 +36,7 @@ contains
     ! C = matmul(transpose(A), B)
     real(sp), intent(in) :: A(:,:), B(:,:)
     real(sp), intent(out) :: C(:,:)
+    print *, "matmul_2d_t"
     call acc_sgemm_t(size(A,2), size(B,2), size(A,1), A, B, C)
     end subroutine
 

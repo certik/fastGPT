@@ -234,6 +234,7 @@ end do
 x = layer_norm(x, lnf_g, lnf_b, 1e-5)
 !y = matmul(transpose(wte), x)
 call matmul_2d_t(wte, x, y)
+stop "OK"
 end function
 
 function generate(n_tokens_to_generate, m, &
