@@ -70,7 +70,10 @@ do i = 1, size(x,2)
         xi(j) = x(j,i)
     end do
     mean(i) = sum(xi) / size(x,1)
-    variance(i) = sum((xi - mean(i))**2) / size(x,1)
+    do j = 1, size(x,1)
+        xi(j) = (xi(j) - mean(i))**2
+    end do
+    variance(i) = sum(xi) / size(x,1)
 end do
 !do i = 1, size(x,1)
 !    y(i,:) = (x(i,:) - mean(:)) / sqrt(variance(:) + eps)
