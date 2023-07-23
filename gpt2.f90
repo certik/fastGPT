@@ -192,12 +192,12 @@ y = y + ffn(layer_norm(y, ln2_g, ln2_b, 1e-5_sp), &
     mlp_fc_w, mlp_fc_b, mlp_proj_w, mlp_proj_b)
 end function
 
-function gpt2(n_vocab, n_ctx, n_seq, n_seq_x, n_embd, n_layer, n_head, input, &
+subroutine gpt2(y, n_vocab, n_ctx, n_seq, n_seq_x, n_embd, n_layer, n_head, input, &
         wte, wpe, &
         mlp_fc_w, mlp_fc_b, mlp_proj_w, mlp_proj_b, &
         attn_w, attn_b, attn_proj_w, attn_proj_b, &
         ln1_g, ln1_b, ln2_g, ln2_b, lnf_g, lnf_b, &
-        use_kv_cache, kv_cache) result(y)
+        use_kv_cache, kv_cache)
 integer, intent(in) :: n_vocab, n_ctx, n_seq, n_seq_x, n_embd, n_layer, n_head
 integer, intent(in) :: input(n_seq)
 real(sp), intent(in) :: wte(n_embd,n_vocab), wpe(n_embd,n_ctx), &
@@ -210,7 +210,7 @@ real(sp), intent(in) :: wte(n_embd,n_vocab), wpe(n_embd,n_ctx), &
     lnf_b(n_embd), lnf_g(n_embd)
 logical, intent(in) :: use_kv_cache
 real(sp), intent(inout) :: kv_cache(n_embd,n_seq,2,n_layer)
-real(sp) :: y(n_vocab,n_seq_x)
+real(sp), intent(out) :: y(n_vocab,n_seq_x)
 real(sp) :: x(n_embd,n_seq_x)
 integer :: i, j
 if (use_kv_cache) then
@@ -237,7 +237,7 @@ x = layer_norm(x, lnf_g, lnf_b, 1e-5)
 !y = matmul(transpose(wte), x)
 call matmul_2d_t(wte, x, y)
 stop "OK"
-end function
+end subroutine
 
 function generate(n_tokens_to_generate, m, &
         n_seq, input, &
@@ -276,7 +276,7 @@ do i = 1, n_tokens_to_generate
         n_seq_x = n_seq2
     end if
     allocate(logits(m%n_vocab, n_seq_x))
-    logits = gpt2(m%n_vocab, m%n_ctx, n_seq2, n_seq_x, m%n_embd, m%n_layer, &
+    call gpt2(logits, m%n_vocab, m%n_ctx, n_seq2, n_seq_x, m%n_embd, m%n_layer, &
             m%n_head, &
             input2, &
             m%wte, m%wpe, &
