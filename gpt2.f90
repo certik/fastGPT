@@ -165,18 +165,14 @@ else
     end do
     end do
 end if
-associate ( &
-        q => x2((1-1)*n_embd+1:1*n_embd,:), &
-        k => kv_cache(:,:,1), &
-        v => kv_cache(:,:,2)  &
-    )
+associate ( q => x2((1-1)*n_embd+1:1*n_embd,:) )
     ! Perform attention over each head
     do i = 1, n_head
         y((i-1)*n_embd/n_head+1:i*n_embd/n_head,:) = attention( &
             n_embd/n_head, n_seq, n_seq_x, &
             q((i-1)*n_embd/n_head+1:i*n_embd/n_head,:), &
-            k((i-1)*n_embd/n_head+1:i*n_embd/n_head,:), &
-            v((i-1)*n_embd/n_head+1:i*n_embd/n_head,:), &
+            kv_cache((i-1)*n_embd/n_head+1:i*n_embd/n_head,:,1), &
+            kv_cache((i-1)*n_embd/n_head+1:i*n_embd/n_head,:,2), &
             causal_mask)
     end do
 end associate
