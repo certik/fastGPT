@@ -294,7 +294,9 @@ do i = 1, n_tokens_to_generate
     end if
     deallocate(logits)
 end do
-output = input2(n_seq+1:)
+do i = 1, n_tokens_to_generate
+    output(i) = input2(n_seq+i)
+end do
 end subroutine
 
 end module
