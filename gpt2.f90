@@ -223,9 +223,9 @@ else
         end do
     end do
 end if
-print *, "It fails below:"
+!print *, "It fails below:"
 do i = 1, n_layer
-    print *, i ! Never gets printed
+!    print *, i ! Never gets printed
     call transformer_block(n_seq, n_seq_x, n_embd, x, &
         mlp_fc_w(:,:,i), mlp_fc_b(:,i), &
         mlp_proj_w(:,:,i), mlp_proj_b(:,i), &
@@ -236,7 +236,7 @@ end do
 x = layer_norm(x, lnf_g, lnf_b, 1e-5)
 !y = matmul(transpose(wte), x)
 call matmul_2d_t(wte, x, y)
-stop "OK"
+!stop "OK"
 end subroutine
 
 function generate(n_tokens_to_generate, m, &
