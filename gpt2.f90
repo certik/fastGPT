@@ -169,7 +169,11 @@ else
 end if
 ! Perform attention over each head
 do l = 1, n_head
-    q = x2((l-1)*n_embd/n_head+1:l*n_embd/n_head,:)
+    do i = 1, n_seq_x
+    do j = 1, n_embd/n_head
+        q(j,i) = x2((l-1)*n_embd/n_head+j,i)
+    end do
+    end do
     do i = 1, n_seq
     do j = 1, n_embd/n_head
         k(j,i) = kv_cache((l-1)*n_embd/n_head+j,i,1)
