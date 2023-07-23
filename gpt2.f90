@@ -248,7 +248,7 @@ integer, intent(in) :: input(n_seq)
 logical, intent(in) :: use_cache
 integer, intent(in) :: byte_decoder(:)
 character(*), intent(in), optional :: stop_text ! Stop if you see this text
-integer, allocatable, intent(out) :: output(:)
+integer, intent(out) :: output(:)
 real(sp), allocatable :: logits(:,:)
 integer :: i
 integer :: n_seq2, n_seq_x
