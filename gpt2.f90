@@ -181,7 +181,11 @@ do l = 1, n_head
     end do
     end do
     call attention(yy, n_embd/n_head, n_seq, n_seq_x, q, k, v, causal_mask)
-    y((l-1)*n_embd/n_head+1:l*n_embd/n_head,:) = yy
+    do i = 1, n_seq_x
+    do j = 1, n_embd/n_head
+        y((l-1)*n_embd/n_head+j,i) = yy(j,i)
+    end do
+    end do
 end do
 ! Out projection
 y = linear(y, proj_w, proj_b)
