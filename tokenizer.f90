@@ -9,11 +9,13 @@ contains
 
 function c2s(x) result(y)
 integer(1), intent(in) :: x(:)
+integer(1) :: xx(size(x))
 character(:), allocatable :: y
 integer :: i
+xx = x
 allocate(character(size(x)) :: y)
 do i = 1, size(x)
-    y(i:i) = char(int(x(i),4))
+    y(i:i) = char(int(xx(i),4))
 end do
 end function
 
