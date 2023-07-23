@@ -59,9 +59,9 @@ do i = 1, size(x,2)
 end do
 end function
 
-function layer_norm(x, g, b, eps) result(y)
+subroutine layer_norm(y, x, g, b, eps)
 real(sp), intent(in) :: x(:,:), g(:), b(:), eps
-real(sp) :: y(size(x,1),size(x,2))
+real(sp), intent(out) :: y(size(x,1),size(x,2))
 real(sp) :: mean(size(x,2)), variance(size(x,2))
 real(sp) :: xi(size(x,1))
 integer :: i, j
@@ -85,7 +85,7 @@ do i = 1, size(x,2)
         y(j,i) = g(j) * y(j,i) + b(j)
     end do
 end do
-end function
+end subroutine
 
 function linear(x, w, b) result(y)
 real(sp), intent(in) :: x(:,:), w(:,:), b(:)
@@ -220,6 +220,7 @@ logical, intent(in) :: use_kv_cache
 real(sp), intent(inout) :: kv_cache(n_embd,n_seq,2,n_layer)
 real(sp), intent(out) :: y(n_vocab,n_seq_x)
 real(sp) :: x(n_embd,n_seq_x)
+real(sp) :: yy(n_embd,n_seq_x)
 integer :: i, j
 if (use_kv_cache) then
     i = n_seq
@@ -241,7 +242,8 @@ do i = 1, n_layer
         ln1_g(:,i), ln1_b(:,i), ln2_g(:,i), ln2_b(:,i), &
         n_head, use_kv_cache, kv_cache(:,:,:,i))
 end do
-x = layer_norm(x, lnf_g, lnf_b, 1e-5)
+call layer_norm(yy, x, lnf_g, lnf_b, 1e-5)
+x = yy
 !y = matmul(transpose(wte), x)
 call matmul_2d_t(wte, x, y)
 end subroutine
