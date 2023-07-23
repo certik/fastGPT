@@ -121,7 +121,9 @@ real(sp) :: tmp(n_seq,n_seq_x)
 !tmp = matmul(transpose(k), q)
 !call matmul_2d(transpose(k), q, tmp)
 call matmul_2d_t(k, q, tmp)
-call matmul_2d(v, softmax(tmp / sqrt(real(n_embd_head,sp)) + mask), y)
+tmp = tmp / sqrt(real(n_embd_head,sp)) + mask
+tmp = softmax(tmp)
+call matmul_2d(v, tmp, y)
 end subroutine
 
 subroutine mha(y, n_seq, n_seq_x, n_embd, x, attn_w, attn_b, proj_w, proj_b, n_head, &
