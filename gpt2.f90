@@ -195,6 +195,10 @@ logical, intent(in) :: use_kv_cache
 real(sp) :: y(n_embd,n_seq_x)
 real(sp), intent(inout) :: kv_cache(n_embd,n_seq,2)
 real(sp) :: tln2_g(size(ln2_g)), tln2_b(size(ln2_b))
+real(sp) :: tmlp_fc_w(size(mlp_fc_w,1),size(mlp_fc_w,2)), &
+    tmlp_fc_b(size(mlp_fc_b)), &
+    tmlp_proj_w(size(mlp_proj_w,1),size(mlp_proj_w,2)), &
+    tmlp_proj_b(size(mlp_proj_b))
 call layer_norm(y, x, ln1_g, ln1_b, 1e-5_sp)
 x = x + mha(n_seq, n_seq_x, n_embd, y, &
     attn_w, attn_b, attn_proj_w, attn_proj_b, n_head, use_kv_cache, kv_cache)
@@ -205,7 +209,11 @@ call layer_norm(y, x, tln2_g, tln2_b, 1e-5_sp)
 !print *, "Out1:", y(1,1)
 !x = y
 !print *, "Out2:", x(1,1)
-call ffn(x, y, mlp_fc_w, mlp_fc_b, mlp_proj_w, mlp_proj_b)
+tmlp_fc_w = mlp_fc_w
+tmlp_fc_b = mlp_fc_b
+tmlp_proj_w = mlp_proj_w
+tmlp_proj_b = mlp_proj_b
+call ffn(x, y, tmlp_fc_w, tmlp_fc_b, tmlp_proj_w, tmlp_proj_b)
 end subroutine
 
 subroutine gpt2(y, n_vocab, n_ctx, n_seq, n_seq_x, n_embd, n_layer, n_head, input, &
