@@ -52,10 +52,16 @@ end function
 function softmax(x) result(y)
 real(sp), intent(in) :: x(:,:)
 real(sp) :: y(size(x,1),size(x,2))
-integer :: i
+integer :: i,j
+real(sp) :: s
 do i = 1, size(x,2)
-    y(:,i) = exp(x(:,i) - maxval(x(:,i)))
-    y(:,i) = y(:,i) / sum(y(:,i))
+    do j = 1, size(x,1)
+        y(j,i) = exp(x(j,i) - maxval(x(:,i)))
+    end do
+    s = sum(y(:,i))
+    do j = 1, size(x,1)
+        y(j,i) = y(j,i) / s
+    end do
 end do
 end function
 
