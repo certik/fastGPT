@@ -210,13 +210,15 @@ logical, intent(in) :: use_kv_cache
 real(sp), intent(inout) :: kv_cache(n_embd,n_seq,2,n_layer)
 real(sp) :: y(n_vocab,n_seq_x)
 real(sp) :: x(n_embd,n_seq_x)
-integer :: i
+integer :: i, j
 if (use_kv_cache) then
     i = n_seq
     x(:,1) = wte(:,input(i)+1) + wpe(:,i)
 else
     do i = 1, n_seq
-        x(:,i) = wte(:,input(i)+1) + wpe(:,i)
+        do j = 1, n_embd
+            x(j,i) = wte(j,input(i)+1) + wpe(j,i)
+        end do
     end do
 end if
 do i = 1, n_layer
