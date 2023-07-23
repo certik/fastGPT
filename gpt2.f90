@@ -55,8 +55,12 @@ real(sp) :: y(size(x,1),size(x,2))
 integer :: i,j
 real(sp) :: s
 do i = 1, size(x,2)
+    s = -1e10
     do j = 1, size(x,1)
-        y(j,i) = exp(x(j,i) - maxval(x(:,i)))
+        if (x(j,i) > s) s = x(j,i)
+    end do
+    do j = 1, size(x,1)
+        y(j,i) = exp(x(j,i) - s)
     end do
     s = 0
     do j = 1, size(x,1)
