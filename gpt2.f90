@@ -221,7 +221,9 @@ else
         end do
     end do
 end if
+print *, "It fails below:"
 do i = 1, n_layer
+    print *, i ! Never gets printed
     x = transformer_block(n_seq, n_seq_x, n_embd, x, &
         mlp_fc_w(:,:,i), mlp_fc_b(:,i), &
         mlp_proj_w(:,:,i), mlp_proj_b(:,i), &
