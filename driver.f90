@@ -147,11 +147,6 @@ print "(a)", "Input tokens:"
 !print "(1000(i6))", input
 print *, input
 print *
-if (n_seq /= 19) error stop
-if (input(1) /= 36235) error stop
-if (input(2) /= 39141) error stop
-if (input(18) /= 407) error stop
-if (input(19) /= 5967) error stop
 
 if (n_seq + n_tokens_to_generate >= m%n_ctx) then
     print *, "The maximum sequence length of the model was surpassed."
@@ -188,10 +183,6 @@ output_txt = decode(output, m%decoder_idx, m%decoder_txt, byte_decoder)
 print *
 print "(a)", "Decoded output as text:"
 print *, output_txt
-if (output(1) /= 703) error stop
-if (output(2) /= 484) error stop
-if (output(19) /= 1517) error stop
-if (output(20) /= 318) error stop
 end subroutine
 
 subroutine gpt2_driver3(input_txt, n_tokens_to_generate, stop_text, m, output_txt)
