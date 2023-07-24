@@ -304,7 +304,7 @@ integer, intent(in) :: byte_decoder(:)
 character(*), intent(in), optional :: stop_text ! Stop if you see this text
 integer, intent(out) :: output(:)
 real(sp), allocatable :: logits(:,:)
-integer :: i
+integer :: i, i1, i2, i3, i4
 integer :: n_seq2, n_seq_x
 integer :: next_id
 integer :: input2(size(input)+n_tokens_to_generate)
@@ -330,7 +330,15 @@ do i = 1, n_tokens_to_generate
     end if
     allocate(logits(m%n_vocab, n_seq_x))
     allocate(kv_cache2(m%n_embd,n_seq2,2,m%n_layer))
-    kv_cache2(:,:,:,:) = kv_cache(:,:n_seq2,:,:)
+    do i4 = 1, m%n_layer
+    do i3 = 1, 2
+    do i2 = 1, n_seq2
+    do i1 = 1, m%n_embd
+        kv_cache2(i1,i2,i3,i4) = kv_cache(i1,i2,i3,i4)
+    end do
+    end do
+    end do
+    end do
     call gpt2(logits, m%n_vocab, m%n_ctx, n_seq2, n_seq_x, m%n_embd, m%n_layer, &
             m%n_head, &
             input2(:n_seq2), &
@@ -339,7 +347,15 @@ do i = 1, n_tokens_to_generate
             m%attn_w, m%attn_b, m%attn_proj_w, m%attn_proj_b, &
             m%ln1_g, m%ln1_b, m%ln2_g, m%ln2_b, m%lnf_g, m%lnf_b, use_kv_cache,&
             kv_cache2)
-    kv_cache(:,:n_seq2,:,:) = kv_cache2(:,:,:,:)
+    do i4 = 1, m%n_layer
+    do i3 = 1, 2
+    do i2 = 1, n_seq2
+    do i1 = 1, m%n_embd
+        kv_cache(i1,i2,i3,i4) = kv_cache2(i1,i2,i3,i4)
+    end do
+    end do
+    end do
+    end do
     deallocate(kv_cache2)
     next_id = maxloc(logits(:,n_seq_x), dim=1)-1
     input2(n_seq2+1) = next_id
