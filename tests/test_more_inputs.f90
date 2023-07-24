@@ -11,19 +11,19 @@ integer, allocatable :: input(:), output(:)
 
 call load_model("model.dat", m)
 
-call gpt2_driver2("Ondřej Čertík was born in ", 13, m, input, output)
+call gpt2_driver2("Ondřej Čertík was born in", 13, m, input, output)
 print *
 print *, "TESTS:"
 call test(input, input_ref, "Input")
 call test(output, output_ref, "Output")
 
-call gpt2_driver2("San Francisco is ", 8, m, input, output)
+call gpt2_driver2("San Francisco is", 8, m, input, output)
 print *
 print *, "TESTS:"
 call test(input, [15017, 6033, 318], "Input")
 call test(output, [257, 1748, 286, 517, 621, 352, 1510, 661], "Output")
 
-call gpt2_driver2("Cars are ", 13, m, input, output)
+call gpt2_driver2("Cars are", 13, m, input, output)
 print *
 print *, "TESTS:"
 call test(input, [34, 945, 389], "Input")
