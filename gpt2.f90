@@ -329,8 +329,8 @@ do i = 1, n_tokens_to_generate
         n_seq_x = n_seq2
     end if
     allocate(logits(m%n_vocab, n_seq_x))
-    allocate(kv_cache2(m%n_embd,n_seq+n_tokens_to_generate,2,m%n_layer))
-    kv_cache2 = kv_cache(:,:n_seq2,:,:)
+    allocate(kv_cache2(m%n_embd,n_seq2,2,m%n_layer))
+    kv_cache2(:,:,:,:) = kv_cache(:,:n_seq2,:,:)
     call gpt2(logits, m%n_vocab, m%n_ctx, n_seq2, n_seq_x, m%n_embd, m%n_layer, &
             m%n_head, &
             input2(:n_seq2), &
@@ -339,7 +339,7 @@ do i = 1, n_tokens_to_generate
             m%attn_w, m%attn_b, m%attn_proj_w, m%attn_proj_b, &
             m%ln1_g, m%ln1_b, m%ln2_g, m%ln2_b, m%lnf_g, m%lnf_b, use_kv_cache,&
             kv_cache2)
-    kv_cache(:,:n_seq2,:,:) = kv_cache2
+    kv_cache(:,:n_seq2,:,:) = kv_cache2(:,:,:,:)
     deallocate(kv_cache2)
     next_id = maxloc(logits(:,n_seq_x), dim=1)-1
     input2(n_seq2+1) = next_id
