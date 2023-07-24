@@ -184,10 +184,10 @@ print "(a,f8.3,a,f4.2,a)", "    done. Time:", t2o-t1o, "s (", (t2-t1)/(t2o-t1o),
 print *
 print "(a)", "Output tokens:"
 print *, output
-!output_txt = decode(output, m%decoder_idx, m%decoder_txt, byte_decoder)
-!print *
-!print "(a)", "Decoded output as text:"
-!print "(a)", output_txt
+output_txt = decode(output, m%decoder_idx, m%decoder_txt, byte_decoder)
+print *
+print "(a)", "Decoded output as text:"
+print *, output_txt
 if (output(1) /= 703) error stop
 if (output(2) /= 484) error stop
 if (output(19) /= 1517) error stop
