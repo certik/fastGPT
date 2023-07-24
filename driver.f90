@@ -174,7 +174,7 @@ allocate(output(n_tokens_to_generate))
 print "(a)", "Running model..."
 call cpu_time(t1)
 t1o = omp_get_wtime()
-use_cache = .false.
+use_cache = .true.
 call generate(output, n_tokens_to_generate, m, size(input), input, use_cache, &
     byte_decoder)
 print *
