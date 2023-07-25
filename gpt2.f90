@@ -359,9 +359,9 @@ do i = 1, n_tokens_to_generate
     deallocate(kv_cache2)
     next_id = maxloc(logits(:,n_seq_x), dim=1)-1
     input2(n_seq2+1) = next_id
-    !last_token = decode([next_id], m%decoder_idx, &
-    !    m%decoder_txt, byte_decoder)
-    !write(*, fmt="(a)", advance="no") last_token
+    last_token = decode([next_id], m%decoder_idx, &
+        m%decoder_txt, byte_decoder)
+    write(*, fmt="(a)", advance="no") last_token
     if (present(stop_text)) then
         output_txt = output_txt // last_token
         if (output_txt(len(output_txt)-len(stop_text)+1:len(output_txt)) == stop_text) then
