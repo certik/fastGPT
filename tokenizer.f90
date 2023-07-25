@@ -242,13 +242,25 @@ integer, intent(in) :: tokens(:), idx(0:), byte_decoder(0:)
 integer(1), intent(in) :: decoder_txt(:)
 character(:), allocatable :: output
 character(:), allocatable :: output2, tmp
-integer :: i, c
-allocate(character(0) :: output2) ! Fix GFortran warning
-output2 = ""
+integer, parameter :: max_len = 4096
+integer(1) :: output3(max_len)
+integer(1), allocatable :: output4(:)
+integer :: i, j, c, pos
+pos = 0
 do i = 1, size(tokens)
     if (tokens(i) < 0) error stop "tokens(i) < 0"
-    output2 = output2 // c2s(decoder_txt(idx(tokens(i))+1:idx(tokens(i)+1)))
+    ! output2 = output2 // (decoder_txt(idx(tokens(i))+1:idx(tokens(i)+1)))
+    do j = idx(tokens(i))+1, idx(tokens(i)+1)
+        pos = pos + 1
+        output3(pos) = decoder_txt(j)
+    end do
 end do
+allocate(character(0) :: output2) ! Fix GFortran warning
+allocate(output4(pos))
+do j = 1, pos
+    output4(j) = output3(j)
+end do
+output2 = c2s(output4)
 i = 1
 output = ""
 do
@@ -259,7 +271,7 @@ do
     if (c < 0 .or. c > ubound(byte_decoder,1)) then
         print *, "Codepoint out of range for byte decoder:", c, ubound(byte_decoder,1)
         ! We skip this, to allow LFortran to run
-!        error stop "Codepoint out of range for byte decoder"
+        error stop "Codepoint out of range for byte decoder"
     else
         tmp = achar(byte_decoder(c))
         output = output // tmp
