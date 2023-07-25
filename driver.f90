@@ -175,7 +175,7 @@ call generate(output, n_tokens_to_generate, m, size(input), input, use_cache, &
 print *
 t2o = omp_get_wtime()
 call cpu_time(t2)
-print "(a,f8.3,a,f4.2,a)", "    done. Time:", t2o-t1o, "s (", (t2-t1)/(t2o-t1o), "x)"
+print "(a,f8.3,a,f8.2,a)", "    done. Time:", t2o-t1o, "s (", (t2-t1)/(t2o-t1o), "x)"
 print *
 print "(a)", "Output tokens:"
 print *, output
