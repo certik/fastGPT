@@ -302,7 +302,7 @@ integer, intent(in) :: input(n_seq)
 logical, intent(in) :: use_cache
 integer, intent(in) :: byte_decoder(:)
 character(*), intent(in), optional :: stop_text ! Stop if you see this text
-integer, intent(out) :: output(:)
+integer, allocatable, intent(out) :: output(:)
 real(sp), allocatable :: logits(:,:)
 integer :: i, i1, i2, i3, i4
 integer :: n_seq2, n_seq_x
@@ -370,7 +370,9 @@ do i = 1, n_tokens_to_generate
     end if
     deallocate(logits)
 end do
-do i = 1, n_tokens_to_generate
+! output = input2(n_seq+1:n_seq2+1)
+allocate(output(n_seq2 - n_seq + 1))
+do i = 1, n_seq2 - n_seq + 1
     output(i) = input2(n_seq+i)
 end do
 end subroutine
