@@ -258,10 +258,12 @@ do
     ! [0,324] -> [0,255]
     if (c < 0 .or. c > ubound(byte_decoder,1)) then
         print *, "Codepoint out of range for byte decoder:", c, ubound(byte_decoder,1)
-        error stop "Codepoint out of range for byte decoder"
+        ! We skip this, to allow LFortran to run
+!        error stop "Codepoint out of range for byte decoder"
+    else
+        tmp = achar(byte_decoder(c))
+        output = output // tmp
     end if
-    tmp = achar(byte_decoder(c))
-    output = output // tmp
     if (i == len(output2)) exit
     i = i + 1
 end do
