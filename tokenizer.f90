@@ -256,7 +256,10 @@ do
     ! However for GPT-2 it seems only range 0-323 is used from UTF-32.
     c = utf8_to_codepoint(output2, i)
     ! [0,324] -> [0,255]
-    if (c < 0 .or. c > ubound(byte_decoder,1)) error stop "Codepoint out of range for byte decoder"
+    if (c < 0 .or. c > ubound(byte_decoder,1)) then
+        print *, "Codepoint out of range for byte decoder:", c, ubound(byte_decoder,1)
+        error stop "Codepoint out of range for byte decoder"
+    end if
     tmp = achar(byte_decoder(c))
     output = output // tmp
     if (i == len(output2)) exit
