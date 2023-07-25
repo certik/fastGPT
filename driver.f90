@@ -154,16 +154,16 @@ if (n_seq + n_tokens_to_generate >= m%n_ctx) then
     error stop
 end if
 
-!print "(a)", "Decoded input as text:"
+print "(a)", "Decoded input as text:"
 !print "(a)", decode(input, decoder_idx, decoder_txt, byte_decoder)
-!allocate(character(0) :: output_txt) ! Fix GFortran warning
-!output_txt = decode(input, m%decoder_idx, m%decoder_txt, byte_decoder)
-!print "(a)", output_txt
+allocate(character(0) :: output_txt) ! Fix GFortran warning
+output_txt = decode(input, m%decoder_idx, m%decoder_txt, byte_decoder)
+print *, output_txt
 print *
 
-!if (input_txt /= output_txt) then
-!    error stop "The decoded input text does not agree with the input text"
-!end if
+if (input_txt /= output_txt) then
+    error stop "The decoded input text does not agree with the input text"
+end if
 
 allocate(output(n_tokens_to_generate))
 print "(a)", "Running model..."
