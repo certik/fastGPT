@@ -36,6 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 """
 
+
 from time import monotonic as clock
 import os
 import json
@@ -128,40 +129,70 @@ def tf_load_encoder_hparams_and_params(model_size, models_dir):
 
 from dataclasses import dataclass
 
-HParamsType = dict[str, int]
+
+# === Magic (Unexplained) Numbers =========================
+
+DecoderIdxType     = np.ndarray
+DecoderIdxShape    = (50_258,)
+
+DecoderTxtType     = str
+DecoderTxtAsciiLen = 320_827
+DecoderTxtUtf8Len  = 356_735  # It's checked somewhere below.
+
+VocabIdxType       = np.ndarray
+VocabIdxShape      = (50_002,)
+
+VocabTxtType       = str
+VocabTxtAsciiLen   = 370_558
+VocabTxtUtf8Len    = 406_304  # It's checked somewhere below.
+NVocab             = 50_257
+
+DecoderShape       = (256,)
+
+NBlocks            = 12
+
+ModelType          = 0xfa51697
+ModelVersion       = 1
+
+NCtx               = 1024
+NEmbed             = 768
+
+Magic2304          = 2304
+Magic3072          = 3072
+
 
 # === Block-Attention components ======================
 CAttnBType         = np.ndarray
-CAttnBShape        = (     2304,)
+CAttnBShape        = (        Magic2304,)
 CAttnWType         = np.ndarray
-CAttnWShape        = (768, 2304,)
+CAttnWShape        = (NEmbed, Magic2304,)
 CAttnType          = dict[str, Union[CAttnBType, CAttnWType]]
 
 CProjBType         = np.ndarray
-CProjBShape        = (      768,)
+CProjBShape        = (        NEmbed,)
 CProjWType         = np.ndarray
-CProjWShape        = (768,  768,)
+CProjWShape        = (NEmbed, NEmbed,)
 CProjType          = dict[str, Union[CProjBType, CProjWType]]
 # --- top level
 BlockAttnType      = dict[str, Union[CAttnType, CProjType]]
-# === BlockIn components ==============================
+# === BlockLn components ==============================
 BlockLnBType       = np.ndarray
-BlockLnBShape      = (768,)
+BlockLnBShape      = (NEmbed,)
 BlockLnGType       = np.ndarray
-BlockLnGShape      = (768,)
+BlockLnGShape      = (NEmbed,)
 # --- top level
 BlockLnType        = dict[str, Union[BlockLnBType, BlockLnGType]]
 # === BlockMlp components =============================
 MlpCFcBType        = np.ndarray
-MlpCFcBShape       = (     3072,)
+MlpCFcBShape       = (        Magic3072,)
 MlpCFcWType        = np.ndarray
-MlpCFcWShape       = (768, 3072,)
+MlpCFcWShape       = (NEmbed, Magic3072,)
 MlpCFcType         = dict[str, Union[MlpCFcBType, MlpCFcWType]]
 
 MlpCProjBType      = np.ndarray
-MlpCProjBShape     = (      768,)
+MlpCProjBShape     = (          NEmbed,)
 MlpCProjWType      = np.ndarray
-MlpCProjWShape     = (3072, 768,)
+MlpCProjWShape     = (Magic3072, NEmbed,)
 MlpCProjType       = dict[str, Union[MlpCProjBType, MlpCProjWType]]
 # --- top level
 BlockMlpType       = dict[str, Union[MlpCFcType, MlpCProjType]]
@@ -169,27 +200,27 @@ BlockMlpType       = dict[str, Union[MlpCFcType, MlpCProjType]]
 ParamsBlockType    = dict[str, Union[BlockAttnType,
                                      BlockLnType,  # two of these
                                      BlockMlpType]]
-#                 len=12
+
 ParamsBlocksType   = list[ParamsBlockType]
 ParamsLnFType      = dict[str, np.ndarray]
 ParamsLnFValShape  = BlockLnBShape
 ParamsWpeType      = np.ndarray
-ParamsWpeShape     = ( 1024, 768,)
+ParamsWpeShape     = (  NCtx, NEmbed,)
 ParamsWteType      = np.ndarray
-ParamsWteShape     = (50257, 768,)
+ParamsWteShape     = (NVocab, NEmbed,)
 ParamsType         = dict[str, Union[ParamsBlocksType,
                                      ParamsLnFType,
                                      ParamsWpeType,
                                      ParamsWteType]]
 
-
 ModelMetadataType  = np.ndarray
 ModelMetadataShape = (12,)
+
+HParamsType = dict[str, int]
 
 
 @dataclass
 class Model:
-    blocks      : ParamsBlocksType  # TODO: take this out of the model
     # integer metadata
     model_type       : int
     model_version    : int
@@ -198,7 +229,7 @@ class Model:
     n_embd           : int
     n_layer          : int
     n_head           : int
-    idx_len          : int
+    decoder_idx_len  : int
     decoder_txt_len  : int
     vocab_idx_len    : int
     vocab_txt_len    : int
@@ -225,7 +256,7 @@ class Model:
 def convert(params,
             n_head,
             n_ctx,
-            idx,
+            decoder_idx,
             decoder_txt,
             vocab_idx,
             vocab_txt,
@@ -236,18 +267,17 @@ def convert(params,
     # must predefine just to get shapes ...
     blocks : ParamsBlocksType = params["blocks"]
     nblocks = len(blocks)
-    assert nblocks == 12
+    assert nblocks == NBlocks
 
     n_embd  = blocks[0]["ln_1"]["b"].size
     n_layer = nblocks
-    assert n_layer == 12
+    assert n_layer == NBlocks
 
-    n_vocab = ParamsWteShape[0]  # np.size(mo.wte, 0)
-    model_type = 0xfa51697  # fastGPT
-    model_version = 1
+    n_vocab       = ParamsWteShape[0]  # np.size(mo.wte, 0)
+    model_type    = ModelType
+    model_version = ModelVersion
 
     mo : Model = make_empty_model_with_metadata(
-        blocks           = blocks,
         model_type       = model_type,
         model_version    = model_version,
         n_vocab          = n_vocab,
@@ -255,9 +285,10 @@ def convert(params,
         n_embd           = n_embd,
         n_layer          = n_layer,
         n_head           = n_head,
-        idx_len          = len(idx),
+        decoder_idx_len  = DecoderIdxShape[0],
+        # It's useful to check magic numbers against computations:
         decoder_txt_len  = len(decoder_txt.encode("utf-8")),
-        vocab_idx_len    = len(vocab_idx),
+        vocab_idx_len    = VocabIdxShape[0],
         vocab_txt_len    = len(vocab_txt.encode("utf-8")),
         byte_decoder_len = len(byte_decoder),
     )
@@ -279,6 +310,7 @@ def convert(params,
 
     mo.wte   = params["wte"]
     mo.wpe   = params["wpe"]
+
     mo.lnf_g = params["ln_f"]["g"]
     mo.lnf_b = params["ln_f"]["b"]
 
@@ -286,7 +318,7 @@ def convert(params,
     print("Transform time: ", t2 - t1)
 
     check_model(
-        mo, n_vocab, idx, vocab_idx, byte_decoder, n_embd, nblocks)
+        mo, n_vocab, decoder_idx, vocab_idx, byte_decoder, n_embd, nblocks)
 
     # Save the model
     t1 = clock()
@@ -300,7 +332,7 @@ def convert(params,
              n_embd,
              n_layer,
              n_head,
-             len(idx),
+             DecoderIdxShape[0],
              len(decoder_txt.encode("utf-8")),
              len(vocab_idx),
              len(vocab_txt.encode("utf-8")),
@@ -329,10 +361,12 @@ def convert(params,
         mo.ln1_g.tofile(f)
         mo.ln2_b.tofile(f)
         mo.ln2_g.tofile(f)
+
         mo.lnf_b.tofile(f)
         mo.lnf_g.tofile(f)
 
-        idx.tofile(f)
+        decoder_idx.tofile(f)
+
         f.write(decoder_txt)
 
         vocab_idx.tofile(f)
@@ -346,7 +380,6 @@ def convert(params,
 
     t1 = clock()
     m = make_empty_model_with_metadata(
-        blocks           = None,  # TODO: get rid of this
         model_type       = 0,
         model_version    = 0,
         n_vocab          = 0,
@@ -354,19 +387,18 @@ def convert(params,
         n_embd           = 0,
         n_layer          = 0,
         n_head           = 0,
-        idx_len          = 0,
+        decoder_idx_len  = 0,
         decoder_txt_len  = 0,
         vocab_idx_len    = 0,
         vocab_txt_len    = 0,
         byte_decoder_len = 0,
         )
 
-    file_offset = 0
-    metadata = np.empty(ModelMetadataShape, dtype=np.int32)
+    floff = 0
     metadata = np.fromfile("model.dat",
                            dtype=np.int32,
                            count=ModelMetadataShape[0],
-                           offset=file_offset)
+                           offset=floff)
     m.model_type       = metadata[ 0]
     m.model_version    = metadata[ 1]
     m.n_vocab          = metadata[ 2]
@@ -374,7 +406,7 @@ def convert(params,
     m.n_embd           = metadata[ 4]
     m.n_layer          = metadata[ 5]
     m.n_head           = metadata[ 6]
-    m.idx_len          = metadata[ 7]
+    m.decoder_idx_len  = metadata[ 7]
     m.decoder_txt_len  = metadata[ 8]
     m.vocab_idx_len    = metadata[ 9]
     m.vocab_txt_len    = metadata[10]
@@ -382,15 +414,90 @@ def convert(params,
 
     check_model_metadata(m)
 
+    floff += ModelMetadataShape[0] * BYTES_PER_INT32
+
+    floff, m.wte = restore_floats(ParamsWteShape, floff)
+    assert np.all(m.wte == mo.wte)
+
+    floff, m.wpe = restore_floats(ParamsWpeShape, floff)
+    assert np.all(m.wpe == mo.wpe)
+
+    floff, m.mlp_fc_w = restore_floats((nblocks,) + MlpCFcWShape, floff)
+    assert np.all(m.mlp_fc_w == mo.mlp_fc_w)
+
+    floff, m.mlp_fc_b = restore_floats((nblocks,) + MlpCFcBShape, floff)
+    assert np.all(m.mlp_fc_b == mo.mlp_fc_b)
+
+    floff, m.mlp_proj_w = restore_floats((nblocks,) + MlpCProjWShape, floff)
+    assert np.all(m.mlp_proj_w == mo.mlp_proj_w)
+
+    floff, m.mlp_proj_b = restore_floats((nblocks,) + MlpCProjBShape, floff)
+    assert np.all(m.mlp_proj_b == mo.mlp_proj_b)
+
+    floff, m.attn_w = restore_floats((nblocks,) + CAttnWShape, floff)
+    assert np.all(m.attn_w == mo.attn_w)
+
+    floff, m.attn_b = restore_floats((nblocks,) + CAttnBShape, floff)
+    assert np.all(m.attn_b == mo.attn_b)
+
+    floff, m.attn_proj_w = restore_floats((nblocks,) + CProjWShape, floff)
+    assert np.all(m.attn_proj_w == mo.attn_proj_w)
+
+    floff, m.attn_proj_b = restore_floats((nblocks,) + CProjBShape, floff)
+    assert np.all(m.attn_proj_b == mo.attn_proj_b)
+
+    floff, m.ln1_b = restore_floats((nblocks,) + BlockLnBShape, floff)
+    assert np.all(m.ln1_b == mo.ln1_b)
+
+    floff, m.ln1_g = restore_floats((nblocks,) + BlockLnBShape, floff)
+    assert np.all(m.ln1_g == mo.ln1_g)
+
+    floff, m.ln2_b = restore_floats((nblocks,) + BlockLnBShape, floff)
+    assert np.all(m.ln2_b == mo.ln2_b)
+
+    floff, m.ln2_g = restore_floats((nblocks,) + BlockLnBShape, floff)
+    assert np.all(m.ln2_g == mo.ln2_g)
+
+    floff, m.lnf_b = restore_floats(ParamsLnFValShape, floff)
+    assert np.all(m.lnf_b == mo.lnf_b)
+
+    floff, m.lnf_g = restore_floats(ParamsLnFValShape, floff)
+    assert np.all(m.lnf_g == mo.lnf_g)
+
+    # floff, decoder_idxi = restore_floats(DecoderIdxShape, floff)
+    # assert np.all(decoder_idxi == decoder_idx)
+
     t2 = clock()
     print("Restore time: ", t2 - t1)
-
 
     return mo
 
 
+def prod_tuple(t : tuple[int]) -> int:
+    result : int = 1
+    for e in t:
+        result *= e
+    return result
+
+
+BYTES_PER_INT32   = 4
+BYTES_PER_FLOAT32 = 4
+
+
+def restore_floats(shape : tuple, offset : int) -> tuple[int, np.ndarray]:
+    """agnostic to length of shape; TODO impossible to statically type"""
+    result : np.ndarray
+    count = prod_tuple(shape)
+    result = np.fromfile("model.dat",
+                         dtype=np.float32,
+                         count=count,
+                         offset=offset)
+    result = np.reshape(result, shape)
+    new_offset : int = offset + (count * BYTES_PER_FLOAT32)
+    return new_offset, result
+
+
 def make_empty_model_with_metadata(
-        blocks           : ParamsBlocksType,
         model_type       : int,
         model_version    : int,
         n_vocab          : int,
@@ -398,14 +505,13 @@ def make_empty_model_with_metadata(
         n_embd           : int,
         n_layer          : int,
         n_head           : int,
-        idx_len          : int,
+        decoder_idx_len  : int,
         decoder_txt_len  : int,
         vocab_idx_len    : int,
         vocab_txt_len    : int,
         byte_decoder_len : int,) -> Model:
 
     mo: Model = Model(
-        blocks           = blocks,
         model_type       = model_type,
         model_version    = model_version,
         n_vocab          = n_vocab,
@@ -413,7 +519,7 @@ def make_empty_model_with_metadata(
         n_embd           = n_embd,
         n_layer          = n_layer,
         n_head           = n_head,
-        idx_len          = idx_len,
+        decoder_idx_len  = decoder_idx_len,
         decoder_txt_len  = decoder_txt_len,
         vocab_idx_len    = vocab_idx_len,
         vocab_txt_len    = vocab_txt_len,
@@ -460,24 +566,24 @@ def check_model(mo, n_vocab, idx, vocab_idx, byte_decoder, n_embd, nblocks):
     assert mo.lnf_b.shape       == BlockLnBShape
     assert n_vocab              == ParamsWteShape[0] == mo.n_vocab
     assert np.size(mo.wte, 1)   == n_embd
-    assert idx.shape            == (mo.idx_len,)
+    assert idx.shape            == (mo.decoder_idx_len,)
     assert vocab_idx.shape      == (mo.vocab_idx_len,)
     assert byte_decoder.shape   == (mo.byte_decoder_len,)
 
 
 def check_model_metadata(mo):
-    assert mo.model_type       == 0xfa51697
-    assert mo.model_version    == 1
-    assert mo.n_vocab          == 50_257
-    assert mo.n_ctx            == 1024
-    assert mo.n_embd           == 768
-    assert mo.n_layer          == 12
-    assert mo.n_head           == 12
-    assert mo.idx_len          == 50_258
-    assert mo.decoder_txt_len  == 356_735
-    assert mo.vocab_idx_len    == 50_002
-    assert mo.vocab_txt_len    == 406_304
-    assert mo.byte_decoder_len == 256
+    assert mo.model_type       == ModelType
+    assert mo.model_version    == ModelVersion
+    assert mo.n_vocab          == NVocab
+    assert mo.n_ctx            == NCtx
+    assert mo.n_embd           == NEmbed
+    assert mo.n_layer          == NBlocks
+    assert mo.n_head           == NBlocks
+    assert mo.decoder_idx_len  == DecoderIdxShape[0]
+    assert mo.decoder_txt_len  == DecoderTxtUtf8Len
+    assert mo.vocab_idx_len    == VocabIdxShape[0]
+    assert mo.vocab_txt_len    == VocabTxtUtf8Len
+    assert mo.byte_decoder_len == DecoderShape[0]
 
 
 def load_decoder(filename):
@@ -500,7 +606,7 @@ def load_vocab(filename):
     return D
 
 
-def decoder_idx(decoder):
+def load_decoder_idx(decoder):
     i = 0
     idx = np.empty(len(decoder) + 1, dtype=np.int32)
     idx[0] = i
@@ -529,7 +635,7 @@ def bytes_to_unicode():
     for y in byte_decoder:
         x = ord(y)
         bd[x] = byte_decoder[y]
-    bd2 = np.zeros(256, dtype=np.int32)
+    bd2 = np.zeros(DecoderShape, dtype=np.int32)
     for i in range(np.size(bd)):
         bd2[bd[i]] = i
     return bd2
@@ -552,7 +658,7 @@ def main(model_size: str = "124M",
     decoder : list[str] = \
         load_decoder(os.path.join(models_dir, model_size, "encoder.json"))
 
-    assert len(decoder) == 50_257
+    assert len(decoder) == NVocab  # TODO: ??? !!! ???
 
     vocab : list[str] = \
         load_vocab(os.path.join(models_dir, model_size, "vocab.bpe"))
@@ -566,19 +672,20 @@ def main(model_size: str = "124M",
     print("Converting model, saving to `model.dat`")
     t1 = clock()
 
-    decoder_txt : str = "".join(decoder)
+    idx : np.ndarray = load_decoder_idx(decoder)
+    assert idx.shape == DecoderIdxShape
 
-    idx : np.ndarray = decoder_idx(decoder)
+    decoder_txt : str = "".join(decoder)
+    assert len(decoder_txt) == DecoderTxtAsciiLen
+
+    vocab_idx    = load_decoder_idx(vocab)
+    assert vocab_idx.shape == VocabIdxShape
 
     vocab_txt    = "".join(vocab)
-
-    vocab_idx    = decoder_idx(vocab)
-
-    assert vocab_idx.shape == (50_002,)
+    assert len(vocab_txt) == VocabTxtAsciiLen
 
     byte_decoder = bytes_to_unicode()
-
-    assert byte_decoder.shape == (256,)
+    assert byte_decoder.shape == DecoderShape
 
     m : Model = \
         convert(params,
