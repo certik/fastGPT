@@ -148,6 +148,7 @@ VocabTxtUtf8Len    = 406_304  # It's checked somewhere below.
 NVocab             = 50_257
 
 DecoderShape       = (256,)
+DecoderLen         = DecoderShape[0]
 
 NBlocks            = 12
 
@@ -464,8 +465,28 @@ def convert(params,
     floff, m.lnf_g = restore_floats(ParamsLnFValShape, floff)
     assert np.all(m.lnf_g == mo.lnf_g)
 
-    # floff, decoder_idxi = restore_floats(DecoderIdxShape, floff)
-    # assert np.all(decoder_idxi == decoder_idx)
+    floff, decoder_idxi = restore_ints(DecoderIdxShape, floff)
+    assert np.all(decoder_idxi == decoder_idx)
+
+    with open("model.dat", "rb") as f:
+        f.seek(floff)
+        decoder_txti_ub : bytes = f.read(DecoderTxtUtf8Len)
+        decoder_txti_u = decoder_txti_ub.decode("utf-8")
+        assert len(decoder_txti_u) == DecoderTxtAsciiLen
+        floff += DecoderTxtUtf8Len
+
+    floff, vocab_idxi = restore_ints(VocabIdxShape, floff)
+    assert np.all(vocab_idxi == vocab_idx)
+
+    with open("model.dat", "rb") as f:
+        f.seek(floff)
+        vocab_txt_ub : bytes = f.read(VocabTxtUtf8Len)
+        vocab_txt_u = vocab_txt_ub.decode("utf-8")
+        assert len(vocab_txt_u) == VocabTxtAsciiLen
+        floff += VocabTxtUtf8Len
+
+    floff, byte_decoderi = restore_ints(DecoderShape, floff)
+    assert np.all(vocab_idxi == vocab_idx)
 
     t2 = clock()
     print("Restore time: ", t2 - t1)
@@ -494,6 +515,19 @@ def restore_floats(shape : tuple, offset : int) -> tuple[int, np.ndarray]:
                          offset=offset)
     result = np.reshape(result, shape)
     new_offset : int = offset + (count * BYTES_PER_FLOAT32)
+    return new_offset, result
+
+
+def restore_ints(shape : tuple, offset : int) -> tuple[int, np.ndarray]:
+    """agnostic to length of shape; TODO impossible to statically type"""
+    result : np.ndarray
+    count = prod_tuple(shape)
+    result = np.fromfile("model.dat",
+                         dtype=np.int32,
+                         count=count,
+                         offset=offset)
+    result = np.reshape(result, shape)
+    new_offset : int = offset + (count * BYTES_PER_INT32)
     return new_offset, result
 
 
@@ -617,7 +651,7 @@ def load_decoder_idx(decoder):
     return idx
 
 
-def bytes_to_unicode():
+def bytes_to_unicode() -> np.ndarray:
     bs = list(range(ord("!"), ord("~") + 1)) + \
         list(range(ord("¡"), ord("¬") + 1)) + \
         list(range(ord("®"), ord("ÿ") + 1))
