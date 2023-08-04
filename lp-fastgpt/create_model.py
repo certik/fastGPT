@@ -48,7 +48,7 @@ import tensorflow as tf
 from tqdm import tqdm
 
 
-from typing import Optional
+from typing import Optional, Union, Any
 
 
 def download_gpt2_files(model_size, model_dir):
@@ -128,12 +128,67 @@ def tf_load_encoder_hparams_and_params(model_size, models_dir):
 
 from dataclasses import dataclass
 
+HParamsType = dict[str, int]
+
+# === Block-Attention components ======================
+CAttnBType         = np.ndarray
+CAttnBShape        = (     2304,)
+CAttnWType         = np.ndarray
+CAttnWShape        = (768, 2304,)
+CAttnType          = dict[str, Union[CAttnBType, CAttnWType]]
+
+CProjBType         = np.ndarray
+CProjBShape        = (      768,)
+CProjWType         = np.ndarray
+CProjWShape        = (768,  768,)
+CProjType          = dict[str, Union[CProjBType, CProjWType]]
+# --- top level
+BlockAttnType      = dict[str, Union[CAttnType, CProjType]]
+# === BlockIn components ==============================
+BlockLnBType       = np.ndarray
+BlockLnBShape      = (768,)
+BlockLnGType       = np.ndarray
+BlockLnGShape      = (768,)
+# --- top level
+BlockLnType        = dict[str, Union[BlockLnBType, BlockLnGType]]
+# === BlockMlp components =============================
+MlpCFcBType        = np.ndarray
+MlpCFcBShape       = (     3072,)
+MlpCFcWType        = np.ndarray
+MlpCFcWShape       = (768, 3072,)
+MlpCFcType         = dict[str, Union[MlpCFcBType, MlpCFcWType]]
+
+MlpCProjBType      = np.ndarray
+MlpCProjBShape     = (      768,)
+MlpCProjWType      = np.ndarray
+MlpCProjWShape     = (3072, 768,)
+MlpCProjType       = dict[str, Union[MlpCProjBType, MlpCProjWType]]
+# --- top level
+BlockMlpType       = dict[str, Union[MlpCFcType, MlpCProjType]]
+# =====================================================
+ParamsBlockType    = dict[str, Union[BlockAttnType,
+                                     BlockLnType,  # two of these
+                                     BlockMlpType]]
+#                 len=12
+ParamsBlocksType   = list[ParamsBlockType]
+ParamsLnFType      = dict[str, np.ndarray]
+ParamsLnFValShape  = BlockLnBShape
+ParamsWpeType      = np.ndarray
+ParamsWpeShape     = ( 1024, 768,)
+ParamsWteType      = np.ndarray
+ParamsWteShape     = (50257, 768,)
+ParamsType         = dict[str, Union[ParamsBlocksType,
+                                     ParamsLnFType,
+                                     ParamsWpeType,
+                                     ParamsWteType]]
+
 
 @dataclass
 class Model:
-    blocks      : dict[str, dict[str, dict[str, np.ndarray]]]
+    blocks      : ParamsBlocksType  # TODO: take this out of the model
     n_embd      : int
     n_layer     : int
+    # check shapes in asserts for now; type system too weak.
     mlp_fc_w    : np.ndarray
     mlp_fc_b    : np.ndarray
     mlp_proj_w  : np.ndarray
@@ -164,14 +219,118 @@ def convert(params,
     t1 = clock()
 
     # must predefine just to get shapes ...
-    blocks  = params["blocks"]
-    n_embd  = blocks[0]["ln_1"]["b"].size
-    n_layer = len(blocks)
+    blocks : ParamsBlocksType = params["blocks"]
+    nblocks = len(blocks)
+    assert nblocks == 12
 
-    m : Model = Model(
-        blocks      = blocks,
-        n_embd      = n_embd,
-        n_layer     = n_layer,
+    n_embd  = blocks[0]["ln_1"]["b"].size
+    assert n_embd == 768
+
+    n_layer = nblocks
+    assert n_layer == 12
+
+    mo : Model = make_empty_model(blocks, n_embd, n_layer)
+
+    for i, block in enumerate(blocks):
+        mo.mlp_fc_w[i, :, :]    = block["mlp"]["c_fc"]["w"]
+        mo.mlp_fc_b[i, :]       = block["mlp"]["c_fc"]["b"]
+        mo.mlp_proj_w[i, :, :]  = block["mlp"]["c_proj"]["w"]
+        mo.mlp_proj_b[i, :]     = block["mlp"]["c_proj"]["b"]
+        mo.attn_w[i, :, :]      = block["attn"]["c_attn"]["w"]
+        mo.attn_b[i, :]         = block["attn"]["c_attn"]["b"]
+        mo.attn_proj_w[i, :, :] = block["attn"]["c_proj"]["w"]
+        mo.attn_proj_b[i, :]    = block["attn"]["c_proj"]["b"]
+
+        mo.ln1_g[i, :]          = block["ln_1"]["g"]
+        mo.ln1_b[i, :]          = block["ln_1"]["b"]
+        mo.ln2_g[i, :]          = block["ln_2"]["g"]
+        mo.ln2_b[i, :]          = block["ln_2"]["b"]
+
+    mo.wte   = params["wte"]
+    mo.wpe   = params["wpe"]
+    mo.lnf_g = params["ln_f"]["g"]
+    mo.lnf_b = params["ln_f"]["b"]
+
+    t2 = clock()
+    print("Transform time: ", t2 - t1)
+
+    t1 = clock()
+
+    n_vocab = np.size(mo.wte, 0)
+    model_type = 0xfa51697  # fastGPT
+    model_version = 1
+
+    # Save the model
+    f = open("model.dat", "w")
+
+
+
+    model_metadata = np.array(
+        [model_type,
+         model_version,
+         n_vocab,
+         n_ctx,
+         n_embd,
+         n_layer,
+         n_head,
+         len(idx),
+         len(decoder_txt.encode("utf-8")),
+         len(vocab_idx),
+         len(vocab_txt.encode("utf-8")),
+         len(byte_decoder)], dtype=np.int32)
+
+    model_metadata.tofile(f)
+
+    mo.wte.tofile(f)
+    mo.wpe.tofile(f)
+
+    mo.mlp_fc_w.tofile(f)
+    mo.mlp_fc_b.tofile(f)
+
+    mo.mlp_proj_w.tofile(f)
+    mo.mlp_proj_b.tofile(f)
+
+    mo.attn_w.tofile(f)
+    mo.attn_b.tofile(f)
+
+    mo.attn_proj_w.tofile(f)
+    mo.attn_proj_b.tofile(f)
+
+    mo.ln1_b.tofile(f)
+    mo.ln1_g.tofile(f)
+    mo.ln2_b.tofile(f)
+    mo.ln2_g.tofile(f)
+    mo.lnf_b.tofile(f)
+    mo.lnf_g.tofile(f)
+
+    idx.tofile(f)
+    f.write(decoder_txt)
+    vocab_idx.tofile(f)
+
+    f.write(vocab_txt)
+
+    byte_decoder.tofile(f)
+
+    check_model_shapes(
+        mo, n_vocab, idx, vocab_idx, byte_decoder, n_embd, nblocks)
+
+    t2 = clock()
+    print("Save time: ", t2 - t1)
+
+    t1 = clock()
+    m = make_empty_model(blocks, n_embd, n_layer)
+    t2 = clock()
+    print("Restore time: ", t2 - t1)
+
+
+    return mo
+
+
+def make_empty_model(blocks, n_embd, n_layer):
+    mo: Model = Model(
+        blocks  = blocks,
+        n_embd  = n_embd,
+        n_layer = n_layer,
 
         mlp_fc_w    = np.empty((n_layer, n_embd, 4 * n_embd) , dtype=np.float32),
         mlp_fc_b    = np.empty((n_layer, 4 * n_embd)         , dtype=np.float32),
@@ -185,89 +344,36 @@ def convert(params,
         ln1_b       = np.empty((n_layer, n_embd)             , dtype=np.float32),
         ln2_g       = np.empty((n_layer, n_embd)             , dtype=np.float32),
         ln2_b       = np.empty((n_layer, n_embd)             , dtype=np.float32),
-        wte         = np.empty(0),
-        wpe         = np.empty(0),
-        lnf_g       = np.empty(0),
-        lnf_b       = np.empty(0),
+        wte         = np.empty(0                             , dtype=np.float32),
+        wpe         = np.empty(0                             , dtype=np.float32),
+        lnf_g       = np.empty(0                             , dtype=np.float32),
+        lnf_b       = np.empty(0                             , dtype=np.float32),
     )
-    for i, block in enumerate(blocks):
-        m.mlp_fc_w[i, :, :]    = block["mlp"]["c_fc"]["w"]
-        m.mlp_fc_b[i, :]       = block["mlp"]["c_fc"]["b"]
-        m.mlp_proj_w[i, :, :]  = block["mlp"]["c_proj"]["w"]
-        m.mlp_proj_b[i, :]     = block["mlp"]["c_proj"]["b"]
-        m.attn_w[i, :, :]      = block["attn"]["c_attn"]["w"]
-        m.attn_b[i, :]         = block["attn"]["c_attn"]["b"]
-        m.attn_proj_w[i, :, :] = block["attn"]["c_proj"]["w"]
-        m.attn_proj_b[i, :]    = block["attn"]["c_proj"]["b"]
-        m.ln1_g[i, :]          = block["ln_1"]["g"]
-        m.ln1_b[i, :]          = block["ln_1"]["b"]
-        m.ln2_g[i, :]          = block["ln_2"]["g"]
-        m.ln2_b[i, :]          = block["ln_2"]["b"]
-    m.wte = params["wte"]
-    m.wpe = params["wpe"]
-    m.lnf_g = params["ln_f"]["g"]
-    m.lnf_b = params["ln_f"]["b"]
-    t2 = clock()
-    print("Transform time: ", t2 - t1)
-    t1 = clock()
+    return mo
 
-    n_vocab = np.size(m.wte, 0)
-    assert np.size(m.wte, 1) == n_embd
 
-    model_type = 0xfa51697  # fastGPT
-    model_version = 1
-
-    # Save the model
-    f = open("model.dat", "w")
-
-    # what is this? just gets thrown away, no ? ...
-
-    np.array([model_type,
-              model_version,
-              n_vocab,
-              n_ctx,
-              n_embd,
-              n_layer,
-              n_head,
-              len(idx),
-              len(decoder_txt.encode("utf-8")),
-              len(vocab_idx),
-              len(vocab_txt.encode("utf-8")),
-              len(byte_decoder)],
-             dtype=np.int32).tofile(f)
-
-    m.wte.tofile(f)
-    m.wpe.tofile(f)
-    m.mlp_fc_w.tofile(f)
-    m.mlp_fc_b.tofile(f)
-    m.mlp_proj_w.tofile(f)
-
-    m.mlp_proj_b.tofile(f)
-    m.attn_w.tofile(f)
-    m.attn_b.tofile(f)
-    m.attn_proj_w.tofile(f)
-    m.attn_proj_b.tofile(f)
-    m.ln1_b.tofile(f)
-    m.ln1_g.tofile(f)
-    m.ln2_b.tofile(f)
-    m.ln2_g.tofile(f)
-    m.lnf_b.tofile(f)
-    m.lnf_g.tofile(f)
-
-    idx.tofile(f)
-
-    f.write(decoder_txt)
-
-    vocab_idx.tofile(f)
-
-    f.write(vocab_txt)
-
-    byte_decoder.tofile(f)
-
-    t2 = clock()
-    print("Save time: ", t2 - t1)
-
-    return m
+def check_model_shapes(mo, n_vocab, idx, vocab_idx, byte_decoder, n_embd, nblocks):
+    assert mo.mlp_fc_w.shape    == (nblocks,) + MlpCFcWShape
+    assert mo.mlp_fc_b.shape    == (nblocks,) + MlpCFcBShape
+    assert mo.mlp_proj_w.shape  == (nblocks,) + MlpCProjWShape
+    assert mo.mlp_proj_b.shape  == (nblocks,) + MlpCProjBShape
+    assert mo.attn_w.shape      == (nblocks,) + CAttnWShape
+    assert mo.attn_b.shape      == (nblocks,) + CAttnBShape
+    assert mo.attn_proj_w.shape == (nblocks,) + CProjWShape
+    assert mo.attn_proj_b.shape == (nblocks,) + CProjBShape
+    assert mo.ln1_g.shape       == (nblocks,) + BlockLnGShape
+    assert mo.ln1_b.shape       == (nblocks,) + BlockLnBShape
+    assert mo.ln2_g.shape       == (nblocks,) + BlockLnGShape
+    assert mo.ln2_b.shape       == (nblocks,) + BlockLnBShape
+    assert mo.wte.shape         == ParamsWteShape
+    assert mo.wpe.shape         == ParamsWpeShape
+    assert mo.lnf_g.shape       == BlockLnGShape
+    assert mo.lnf_b.shape       == BlockLnBShape
+    assert n_vocab              == ParamsWteShape[0] == 50_257
+    assert np.size(mo.wte, 1)   == n_embd == 768
+    assert idx.shape            == (50_258,)
+    assert vocab_idx.shape      == (50_002,)
+    assert byte_decoder.shape   == (256,)
 
 
 def load_decoder(filename):
@@ -302,7 +408,9 @@ def decoder_idx(decoder):
 
 
 def bytes_to_unicode():
-    bs = list(range(ord("!"), ord("~") + 1)) + list(range(ord("¡"), ord("¬") + 1)) + list(range(ord("®"), ord("ÿ") + 1))
+    bs = list(range(ord("!"), ord("~") + 1)) + \
+        list(range(ord("¡"), ord("¬") + 1)) + \
+        list(range(ord("®"), ord("ÿ") + 1))
     cs = bs[:]
     n = 0
     for b in range(2 ** 8):
@@ -323,29 +431,65 @@ def bytes_to_unicode():
     return bd2
 
 
-def main(model_size: str = "124M", models_dir: str = "models") -> Model:
-    print("Loading model")
+def main(model_size: str = "124M",
+         models_dir: str = "models") -> Model:
+
+    # ================================================================
     # load encoder, hparams, and params from the released open-ai gpt-2 files
+    print("Loading model")
     t1 = clock()
-    hparams, params = tf_load_encoder_hparams_and_params(model_size, models_dir)
-    decoder = load_decoder(os.path.join(models_dir, model_size, "encoder.json"))
-    vocab   = load_vocab(os.path.join(models_dir, model_size, "vocab.bpe"))
+
+    hparams : HParamsType
+    params  : ParamsType
+
+    hparams, params = \
+        tf_load_encoder_hparams_and_params(model_size, models_dir)
+
+    decoder : list[str] = \
+        load_decoder(os.path.join(models_dir, model_size, "encoder.json"))
+
+    assert len(decoder) == 50_257
+
+    vocab : list[str] = \
+        load_vocab(os.path.join(models_dir, model_size, "vocab.bpe"))
+
+    assert len(vocab) == 50_001
+
     t2 = clock()
     print("  Done. Loading time: ", t2 - t1)
-
+    # ================================================================
     # generate output ids
     print("Converting model, saving to `model.dat`")
     t1 = clock()
-    decoder_txt = "".join(decoder)
-    idx = decoder_idx(decoder)
-    vocab_txt = "".join(vocab)
-    vocab_idx = decoder_idx(vocab)
+
+    decoder_txt : str = "".join(decoder)
+
+    idx : np.ndarray = decoder_idx(decoder)
+
+    vocab_txt    = "".join(vocab)
+
+    vocab_idx    = decoder_idx(vocab)
+
+    assert vocab_idx.shape == (50_002,)
+
     byte_decoder = bytes_to_unicode()
+
+    assert byte_decoder.shape == (256,)
+
     m : Model = \
-        convert(params, hparams["n_head"], hparams["n_ctx"], idx, decoder_txt,
-            vocab_idx, vocab_txt, byte_decoder)
+        convert(params,
+                hparams["n_head"],
+                hparams["n_ctx"],
+                idx,
+                decoder_txt,
+                vocab_idx,
+                vocab_txt,
+                byte_decoder)
+
     t2 = clock()
     print("  Done. Time: ", t2 - t1)
+    # ================================================================
+
     return m
 
 
