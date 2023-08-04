@@ -183,6 +183,10 @@ ParamsType         = dict[str, Union[ParamsBlocksType,
                                      ParamsWteType]]
 
 
+ModelMetadataType  = np.ndarray
+ModelMetadataShape = (12,)
+
+
 @dataclass
 class Model:
     blocks      : ParamsBlocksType  # TODO: take this out of the model
@@ -302,6 +306,8 @@ def convert(params,
              len(vocab_txt.encode("utf-8")),
              len(byte_decoder)], dtype=np.int32)
 
+        assert model_metadata.shape == ModelMetadataShape
+
         model_metadata.tofile(f)
 
         mo.wte.tofile(f)
@@ -340,22 +346,41 @@ def convert(params,
 
     t1 = clock()
     m = make_empty_model_with_metadata(
-        blocks           = blocks,
-        model_type       = model_type,
-        model_version    = model_version,
-        n_vocab          = n_vocab,
-        n_ctx            = n_ctx,
-        n_embd           = n_embd,
-        n_layer          = n_layer,
-        n_head           = n_head,
-        idx_len          = len(idx),
-        decoder_txt_len  = len(decoder_txt.encode("utf-8")),
-        vocab_idx_len    = len(vocab_idx),
-        vocab_txt_len    = len(vocab_txt.encode("utf-8")),
-        byte_decoder_len = len(byte_decoder),
+        blocks           = None,  # TODO: get rid of this
+        model_type       = 0,
+        model_version    = 0,
+        n_vocab          = 0,
+        n_ctx            = 0,
+        n_embd           = 0,
+        n_layer          = 0,
+        n_head           = 0,
+        idx_len          = 0,
+        decoder_txt_len  = 0,
+        vocab_idx_len    = 0,
+        vocab_txt_len    = 0,
+        byte_decoder_len = 0,
         )
-    with open("model.dat", "r") as f:
-        pass
+
+    file_offset = 0
+    metadata = np.empty(ModelMetadataShape, dtype=np.int32)
+    metadata = np.fromfile("model.dat",
+                           dtype=np.int32,
+                           count=ModelMetadataShape[0],
+                           offset=file_offset)
+    m.model_type       = metadata[ 0]
+    m.model_version    = metadata[ 1]
+    m.n_vocab          = metadata[ 2]
+    m.n_ctx            = metadata[ 3]
+    m.n_embd           = metadata[ 4]
+    m.n_layer          = metadata[ 5]
+    m.n_head           = metadata[ 6]
+    m.idx_len          = metadata[ 7]
+    m.decoder_txt_len  = metadata[ 8]
+    m.vocab_idx_len    = metadata[ 9]
+    m.vocab_txt_len    = metadata[10]
+    m.byte_decoder_len = metadata[11]
+
+    check_model_metadata(m)
 
     t2 = clock()
     print("Restore time: ", t2 - t1)
@@ -415,18 +440,7 @@ def make_empty_model_with_metadata(
 
 
 def check_model(mo, n_vocab, idx, vocab_idx, byte_decoder, n_embd, nblocks):
-    assert mo.model_type       == 0xfa51697
-    assert mo.model_version    ==       1
-    assert mo.n_vocab          ==  50_257
-    assert mo.n_ctx            ==    1024
-    assert mo.n_embd           ==     768
-    assert mo.n_layer          ==      12
-    assert mo.n_head           ==      12
-    assert mo.idx_len          ==  50_258
-    assert mo.decoder_txt_len  == 356_735
-    assert mo.vocab_idx_len    ==  50_002
-    assert mo.vocab_txt_len    == 406_304
-    assert mo.byte_decoder_len ==     256
+    check_model_metadata(mo)
 
     assert mo.mlp_fc_w.shape    == (nblocks,) + MlpCFcWShape
     assert mo.mlp_fc_b.shape    == (nblocks,) + MlpCFcBShape
@@ -449,6 +463,21 @@ def check_model(mo, n_vocab, idx, vocab_idx, byte_decoder, n_embd, nblocks):
     assert idx.shape            == (mo.idx_len,)
     assert vocab_idx.shape      == (mo.vocab_idx_len,)
     assert byte_decoder.shape   == (mo.byte_decoder_len,)
+
+
+def check_model_metadata(mo):
+    assert mo.model_type       == 0xfa51697
+    assert mo.model_version    == 1
+    assert mo.n_vocab          == 50_257
+    assert mo.n_ctx            == 1024
+    assert mo.n_embd           == 768
+    assert mo.n_layer          == 12
+    assert mo.n_head           == 12
+    assert mo.idx_len          == 50_258
+    assert mo.decoder_txt_len  == 356_735
+    assert mo.vocab_idx_len    == 50_002
+    assert mo.vocab_txt_len    == 406_304
+    assert mo.byte_decoder_len == 256
 
 
 def load_decoder(filename):
