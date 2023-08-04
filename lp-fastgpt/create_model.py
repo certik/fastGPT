@@ -186,8 +186,19 @@ ParamsType         = dict[str, Union[ParamsBlocksType,
 @dataclass
 class Model:
     blocks      : ParamsBlocksType  # TODO: take this out of the model
-    n_embd      : int
-    n_layer     : int
+    # integer metadata
+    model_type       : int
+    model_version    : int
+    n_vocab          : int
+    n_ctx            : int
+    n_embd           : int
+    n_layer          : int
+    n_head           : int
+    idx_len          : int
+    decoder_txt_len  : int
+    vocab_idx_len    : int
+    vocab_txt_len    : int
+    byte_decoder_len : int
     # check shapes in asserts for now; type system too weak.
     mlp_fc_w    : np.ndarray
     mlp_fc_b    : np.ndarray
@@ -224,12 +235,28 @@ def convert(params,
     assert nblocks == 12
 
     n_embd  = blocks[0]["ln_1"]["b"].size
-    assert n_embd == 768
-
     n_layer = nblocks
     assert n_layer == 12
 
-    mo : Model = make_empty_model(blocks, n_embd, n_layer)
+    n_vocab = ParamsWteShape[0]  # np.size(mo.wte, 0)
+    model_type = 0xfa51697  # fastGPT
+    model_version = 1
+
+    mo : Model = make_empty_model_with_metadata(
+        blocks           = blocks,
+        model_type       = model_type,
+        model_version    = model_version,
+        n_vocab          = n_vocab,
+        n_ctx            = n_ctx,
+        n_embd           = n_embd,
+        n_layer          = n_layer,
+        n_head           = n_head,
+        idx_len          = len(idx),
+        decoder_txt_len  = len(decoder_txt.encode("utf-8")),
+        vocab_idx_len    = len(vocab_idx),
+        vocab_txt_len    = len(vocab_txt.encode("utf-8")),
+        byte_decoder_len = len(byte_decoder),
+    )
 
     for i, block in enumerate(blocks):
         mo.mlp_fc_w[i, :, :]    = block["mlp"]["c_fc"]["w"]
@@ -254,71 +281,82 @@ def convert(params,
     t2 = clock()
     print("Transform time: ", t2 - t1)
 
-    t1 = clock()
-
-    n_vocab = np.size(mo.wte, 0)
-    model_type = 0xfa51697  # fastGPT
-    model_version = 1
+    check_model(
+        mo, n_vocab, idx, vocab_idx, byte_decoder, n_embd, nblocks)
 
     # Save the model
-    f = open("model.dat", "w")
+    t1 = clock()
+    with open("model.dat", "w") as f:
 
+        model_metadata = np.array(
+            [model_type,
+             model_version,
+             n_vocab,
+             n_ctx,
+             n_embd,
+             n_layer,
+             n_head,
+             len(idx),
+             len(decoder_txt.encode("utf-8")),
+             len(vocab_idx),
+             len(vocab_txt.encode("utf-8")),
+             len(byte_decoder)], dtype=np.int32)
 
+        model_metadata.tofile(f)
 
-    model_metadata = np.array(
-        [model_type,
-         model_version,
-         n_vocab,
-         n_ctx,
-         n_embd,
-         n_layer,
-         n_head,
-         len(idx),
-         len(decoder_txt.encode("utf-8")),
-         len(vocab_idx),
-         len(vocab_txt.encode("utf-8")),
-         len(byte_decoder)], dtype=np.int32)
+        mo.wte.tofile(f)
+        mo.wpe.tofile(f)
 
-    model_metadata.tofile(f)
+        mo.mlp_fc_w.tofile(f)
+        mo.mlp_fc_b.tofile(f)
 
-    mo.wte.tofile(f)
-    mo.wpe.tofile(f)
+        mo.mlp_proj_w.tofile(f)
+        mo.mlp_proj_b.tofile(f)
 
-    mo.mlp_fc_w.tofile(f)
-    mo.mlp_fc_b.tofile(f)
+        mo.attn_w.tofile(f)
+        mo.attn_b.tofile(f)
 
-    mo.mlp_proj_w.tofile(f)
-    mo.mlp_proj_b.tofile(f)
+        mo.attn_proj_w.tofile(f)
+        mo.attn_proj_b.tofile(f)
 
-    mo.attn_w.tofile(f)
-    mo.attn_b.tofile(f)
+        mo.ln1_b.tofile(f)
+        mo.ln1_g.tofile(f)
+        mo.ln2_b.tofile(f)
+        mo.ln2_g.tofile(f)
+        mo.lnf_b.tofile(f)
+        mo.lnf_g.tofile(f)
 
-    mo.attn_proj_w.tofile(f)
-    mo.attn_proj_b.tofile(f)
+        idx.tofile(f)
+        f.write(decoder_txt)
 
-    mo.ln1_b.tofile(f)
-    mo.ln1_g.tofile(f)
-    mo.ln2_b.tofile(f)
-    mo.ln2_g.tofile(f)
-    mo.lnf_b.tofile(f)
-    mo.lnf_g.tofile(f)
+        vocab_idx.tofile(f)
 
-    idx.tofile(f)
-    f.write(decoder_txt)
-    vocab_idx.tofile(f)
+        f.write(vocab_txt)
 
-    f.write(vocab_txt)
-
-    byte_decoder.tofile(f)
-
-    check_model_shapes(
-        mo, n_vocab, idx, vocab_idx, byte_decoder, n_embd, nblocks)
+        byte_decoder.tofile(f)
 
     t2 = clock()
     print("Save time: ", t2 - t1)
 
     t1 = clock()
-    m = make_empty_model(blocks, n_embd, n_layer)
+    m = make_empty_model_with_metadata(
+        blocks           = blocks,
+        model_type       = model_type,
+        model_version    = model_version,
+        n_vocab          = n_vocab,
+        n_ctx            = n_ctx,
+        n_embd           = n_embd,
+        n_layer          = n_layer,
+        n_head           = n_head,
+        idx_len          = len(idx),
+        decoder_txt_len  = len(decoder_txt.encode("utf-8")),
+        vocab_idx_len    = len(vocab_idx),
+        vocab_txt_len    = len(vocab_txt.encode("utf-8")),
+        byte_decoder_len = len(byte_decoder),
+        )
+    with open("model.dat", "r") as f:
+        pass
+
     t2 = clock()
     print("Restore time: ", t2 - t1)
 
@@ -326,11 +364,35 @@ def convert(params,
     return mo
 
 
-def make_empty_model(blocks, n_embd, n_layer):
+def make_empty_model_with_metadata(
+        blocks           : ParamsBlocksType,
+        model_type       : int,
+        model_version    : int,
+        n_vocab          : int,
+        n_ctx            : int,
+        n_embd           : int,
+        n_layer          : int,
+        n_head           : int,
+        idx_len          : int,
+        decoder_txt_len  : int,
+        vocab_idx_len    : int,
+        vocab_txt_len    : int,
+        byte_decoder_len : int,) -> Model:
+
     mo: Model = Model(
-        blocks  = blocks,
-        n_embd  = n_embd,
-        n_layer = n_layer,
+        blocks           = blocks,
+        model_type       = model_type,
+        model_version    = model_version,
+        n_vocab          = n_vocab,
+        n_ctx            = n_ctx,
+        n_embd           = n_embd,
+        n_layer          = n_layer,
+        n_head           = n_head,
+        idx_len          = idx_len,
+        decoder_txt_len  = decoder_txt_len,
+        vocab_idx_len    = vocab_idx_len,
+        vocab_txt_len    = vocab_txt_len,
+        byte_decoder_len = byte_decoder_len,
 
         mlp_fc_w    = np.empty((n_layer, n_embd, 4 * n_embd) , dtype=np.float32),
         mlp_fc_b    = np.empty((n_layer, 4 * n_embd)         , dtype=np.float32),
@@ -352,7 +414,20 @@ def make_empty_model(blocks, n_embd, n_layer):
     return mo
 
 
-def check_model_shapes(mo, n_vocab, idx, vocab_idx, byte_decoder, n_embd, nblocks):
+def check_model(mo, n_vocab, idx, vocab_idx, byte_decoder, n_embd, nblocks):
+    assert mo.model_type       == 0xfa51697
+    assert mo.model_version    ==       1
+    assert mo.n_vocab          ==  50_257
+    assert mo.n_ctx            ==    1024
+    assert mo.n_embd           ==     768
+    assert mo.n_layer          ==      12
+    assert mo.n_head           ==      12
+    assert mo.idx_len          ==  50_258
+    assert mo.decoder_txt_len  == 356_735
+    assert mo.vocab_idx_len    ==  50_002
+    assert mo.vocab_txt_len    == 406_304
+    assert mo.byte_decoder_len ==     256
+
     assert mo.mlp_fc_w.shape    == (nblocks,) + MlpCFcWShape
     assert mo.mlp_fc_b.shape    == (nblocks,) + MlpCFcBShape
     assert mo.mlp_proj_w.shape  == (nblocks,) + MlpCProjWShape
@@ -369,11 +444,11 @@ def check_model_shapes(mo, n_vocab, idx, vocab_idx, byte_decoder, n_embd, nblock
     assert mo.wpe.shape         == ParamsWpeShape
     assert mo.lnf_g.shape       == BlockLnGShape
     assert mo.lnf_b.shape       == BlockLnBShape
-    assert n_vocab              == ParamsWteShape[0] == 50_257
-    assert np.size(mo.wte, 1)   == n_embd == 768
-    assert idx.shape            == (50_258,)
-    assert vocab_idx.shape      == (50_002,)
-    assert byte_decoder.shape   == (256,)
+    assert n_vocab              == ParamsWteShape[0] == mo.n_vocab
+    assert np.size(mo.wte, 1)   == n_embd
+    assert idx.shape            == (mo.idx_len,)
+    assert vocab_idx.shape      == (mo.vocab_idx_len,)
+    assert byte_decoder.shape   == (mo.byte_decoder_len,)
 
 
 def load_decoder(filename):
