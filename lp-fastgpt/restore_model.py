@@ -35,16 +35,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 """
 
-
-from time import monotonic as clock
 import numpy as np
 from typing import Union
 
 from dataclasses import dataclass
 
+from timer import Timer
+
 
 # === Magic (Unexplained) Numbers =========================
-
 DecoderIdxType     = np.ndarray
 DecoderIdxShape    = (50_258,)
 
@@ -74,7 +73,6 @@ NEmbed             = 768
 Magic2304          = 2304
 Magic3072          = 3072
 
-
 # === Block-Attention components ======================
 CAttnBType         = np.ndarray
 CAttnBShape        = (        Magic2304,)
@@ -89,6 +87,7 @@ CProjWShape        = (NEmbed, NEmbed,)
 CProjType          = dict[str, Union[CProjBType, CProjWType]]
 # --- top level
 BlockAttnType      = dict[str, Union[CAttnType, CProjType]]
+
 # === BlockLn components ==============================
 BlockLnBType       = np.ndarray
 BlockLnBShape      = (NEmbed,)
@@ -96,6 +95,7 @@ BlockLnGType       = np.ndarray
 BlockLnGShape      = (NEmbed,)
 # --- top level
 BlockLnType        = dict[str, Union[BlockLnBType, BlockLnGType]]
+
 # === BlockMlp components =============================
 MlpCFcBType        = np.ndarray
 MlpCFcBShape       = (        Magic3072,)
@@ -104,12 +104,13 @@ MlpCFcWShape       = (NEmbed, Magic3072,)
 MlpCFcType         = dict[str, Union[MlpCFcBType, MlpCFcWType]]
 
 MlpCProjBType      = np.ndarray
-MlpCProjBShape     = (          NEmbed,)
+MlpCProjBShape     = (           NEmbed,)
 MlpCProjWType      = np.ndarray
 MlpCProjWShape     = (Magic3072, NEmbed,)
 MlpCProjType       = dict[str, Union[MlpCProjBType, MlpCProjWType]]
 # --- top level
 BlockMlpType       = dict[str, Union[MlpCFcType, MlpCProjType]]
+
 # =====================================================
 ParamsBlockType    = dict[str, Union[BlockAttnType,
                                      BlockLnType,  # two of these
@@ -130,8 +131,8 @@ ParamsType         = dict[str, Union[ParamsBlocksType,
 ModelMetadataType  = np.ndarray
 ModelMetadataShape = (12,)
 
-HParamsType = dict[str, int]
-
+NTokensToGenerate  =   20
+MaxTokens          = 2048
 
 @dataclass
 class Model:
@@ -147,7 +148,7 @@ class Model:
     decoder_txt_len  : int
     vocab_idx_len    : int
     vocab_txt_len    : int
-    byte_decoder_len : int
+    byte_encoder_len : int
     # check shapes in asserts for now; type system too weak.
     mlp_fc_w         : np.ndarray
     mlp_fc_b         : np.ndarray
@@ -170,11 +171,11 @@ class Model:
     decoder_txt      : str
     vocab_idx        : np.ndarray
     vocab_txt        : str
-    byte_decoder     : np.ndarray
+    byte_encoder     : np.ndarray
 
 
 def restore_model() -> Model:
-    m : Model = make_empty_model_with_metadata(
+    m : Model = empty_model_with_metadata(
         model_type       = 0,
         model_version    = 0,
         n_vocab          = 0,
@@ -186,7 +187,7 @@ def restore_model() -> Model:
         decoder_txt_len  = 0,
         vocab_idx_len    = 0,
         vocab_txt_len    = 0,
-        byte_decoder_len = 0,
+        byte_encoder_len = 0,
         )
 
     floff : int = 0
@@ -207,7 +208,7 @@ def restore_model() -> Model:
     m.decoder_txt_len  = metadata[ 8]
     m.vocab_idx_len    = metadata[ 9]
     m.vocab_txt_len    = metadata[10]
-    m.byte_decoder_len = metadata[11]
+    m.byte_encoder_len = metadata[11]
 
     check_model_metadata(m)
 
@@ -246,7 +247,7 @@ def restore_model() -> Model:
         assert len(m.vocab_txt) == VocabTxtAsciiLen
         floff += VocabTxtUtf8Len
 
-    floff, m.byte_decoder = restore_ints(DecoderShape, floff)
+    floff, m.byte_encoder = restore_ints(DecoderShape, floff)
 
     return m
 
@@ -288,7 +289,7 @@ def restore_ints(shape : tuple, offset : int) -> tuple[int, np.ndarray]:
     return new_offset, result
 
 
-def make_empty_model_with_metadata(
+def empty_model_with_metadata(
         model_type       : int,
         model_version    : int,
         n_vocab          : int,
@@ -300,7 +301,7 @@ def make_empty_model_with_metadata(
         decoder_txt_len  : int,
         vocab_idx_len    : int,
         vocab_txt_len    : int,
-        byte_decoder_len : int,) -> Model:
+        byte_encoder_len : int,) -> Model:
 
     mo: Model = Model(
         model_type       = model_type,
@@ -314,7 +315,7 @@ def make_empty_model_with_metadata(
         decoder_txt_len  = decoder_txt_len,
         vocab_idx_len    = vocab_idx_len,
         vocab_txt_len    = vocab_txt_len,
-        byte_decoder_len = byte_decoder_len,
+        byte_encoder_len = byte_encoder_len,
 
         mlp_fc_w     = np.empty((n_layer, n_embd, 4 * n_embd) , dtype=np.float32),
         mlp_fc_b     = np.empty((n_layer, 4 * n_embd)         , dtype=np.float32),
@@ -337,7 +338,7 @@ def make_empty_model_with_metadata(
         decoder_txt  = '',
         vocab_idx    = np.empty(0                             , dtype=np.int32),
         vocab_txt    = '',
-        byte_decoder = np.empty(0                             , dtype=np.int32),
+        byte_encoder = np.empty(0                             , dtype=np.int32),
     )
     return mo
 
@@ -366,7 +367,7 @@ def check_model(mo : Model) -> None:
     assert np.size(mo.wte, 1)    == NEmbed
     assert mo.decoder_idx.shape  == (mo.decoder_idx_len,)
     assert mo.vocab_idx.shape    == (mo.vocab_idx_len,)
-    assert mo.byte_decoder.shape == (mo.byte_decoder_len,)
+    assert mo.byte_encoder.shape == (mo.byte_encoder_len,)
 
 
 def check_model_metadata(mo):
@@ -382,21 +383,60 @@ def check_model_metadata(mo):
     assert mo.decoder_txt_len  == DecoderTxtUtf8Len
     assert mo.vocab_idx_len    == VocabIdxShape[0]
     assert mo.vocab_txt_len    == VocabTxtUtf8Len
-    assert mo.byte_decoder_len == DecoderShape[0]
+    assert mo.byte_encoder_len == DecoderShape[0]
+
+
+def next_token(input_ : str, i : int) -> tuple[str, int]:
+    result = ('', i)
+    if i >= len(input_):
+        return '', i
+    # elif
+    return result
+
+
+def encode(m : Model, input_ : str, byte_decoder : np.ndarray) -> np.ndarray:
+    """Compare to the fortran function in tokenizer.f90."""
+    # reshape this later after counting tokens
+    tokens2  : np.ndarray = np.zeros(MaxTokens, dtype=np.int32)
+    n_tokens : int        = 0
+    i        : int        = 0  # fortran counts from 1
+    # Python does not have \p for punctuation.
+    # rex = re.compile(r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""")
+    # rex.match(input_)
+    # while True:
+    #     tmp : str = next_token(input_, i)
+    #     if tmp == '':
+    #         break
+    return tokens2
+
+
+def gpt2_driver(m : Model, input_ : str) -> str:
+    print(f"Input to the model =\n{input_}")
+    n_tokens_to_generate : int = NTokensToGenerate
+    n_seq                : int = len(input_)
+    byte_encoder_max     : int = np.max(m.byte_encoder)
+    byte_decoder : np.ndarray = \
+        np.zeros((byte_encoder_max + 1,), dtype=np.int32)
+    for i, e in enumerate(m.byte_encoder):
+        byte_decoder[e] = i
+    # check against fortran:
+    # print(f'byte_decoder = \n{byte_decoder}')
+    encoded : np.ndarray = encode(m, input_, byte_decoder)
+    result = ''
+    return result
 
 
 def main() -> Model:
 
-    print("Restoring model")
-    t1 = clock()
-    m : Model = restore_model()
-    t2 = clock()
-    print("  Done. Time: ", t2 - t1)
-    # ================================================================
+    with Timer(text="Restored the model in {:0.4f} seconds."):
+        m : Model = restore_model()
+
+    input : str = """Alan Turing theorized that computers would one day become very powerful, but even he could not imagine"""
+    with Timer(text="Ran the model in {:0.6f} seconds."):
+        result : str = gpt2_driver(m, input)
 
     return m
 
 
 if __name__ == "__main__":
-    import fire
-    fire.Fire(main)
+    main()

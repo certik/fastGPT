@@ -122,13 +122,23 @@ contains
 
         ! Compute byte_decoder:
         allocate(byte_decoder(0:maxval(m%byte_encoder)))
+        print "(a)", "size(m%byte_encoder)"
+        print *, size(m%byte_encoder)
+        print "(a)", "byte encoder max"
+        print *, maxval(m%byte_encoder)
+        print "(a)", "size(byte_decoder)"
+        print *, size(byte_decoder)
+!        print "(a)", "byte encoder"
+!        print *, m%byte_encoder
         byte_decoder = 0
         do i = 0, size(m%byte_encoder) - 1
             byte_decoder(m%byte_encoder(i)) = i
         end do
+!        print "(a)", "byte decoder"
+!        print *, byte_decoder
 
         print "(a)", "Input text"
-        print "(a)", input_txt
+        print *, input_txt
 
         print *
         print "(a)", "Encoding: tokenizing input text into tokens (currently slow)..."
