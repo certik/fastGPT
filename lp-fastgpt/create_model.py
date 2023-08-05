@@ -236,22 +236,28 @@ class Model:
     vocab_txt_len    : int
     byte_decoder_len : int
     # check shapes in asserts for now; type system too weak.
-    mlp_fc_w    : np.ndarray
-    mlp_fc_b    : np.ndarray
-    mlp_proj_w  : np.ndarray
-    mlp_proj_b  : np.ndarray
-    attn_w      : np.ndarray
-    attn_b      : np.ndarray
-    attn_proj_w : np.ndarray
-    attn_proj_b : np.ndarray
-    ln1_g       : np.ndarray
-    ln1_b       : np.ndarray
-    ln2_g       : np.ndarray
-    ln2_b       : np.ndarray
-    wte         : np.ndarray
-    wpe         : np.ndarray
-    lnf_g       : np.ndarray
-    lnf_b       : np.ndarray
+    mlp_fc_w         : np.ndarray
+    mlp_fc_b         : np.ndarray
+    mlp_proj_w       : np.ndarray
+    mlp_proj_b       : np.ndarray
+    attn_w           : np.ndarray
+    attn_b           : np.ndarray
+    attn_proj_w      : np.ndarray
+    attn_proj_b      : np.ndarray
+    ln1_g            : np.ndarray
+    ln1_b            : np.ndarray
+    ln2_g            : np.ndarray
+    ln2_b            : np.ndarray
+    wte              : np.ndarray
+    wpe              : np.ndarray
+    lnf_g            : np.ndarray
+    lnf_b            : np.ndarray
+    # auxiliary matrices and texts
+    decoder_idx      : np.ndarray
+    decoder_txt      : str
+    vocab_idx        : np.ndarray
+    vocab_txt        : str
+    byte_decoder     : np.ndarray
 
 
 def convert(params,
@@ -314,6 +320,12 @@ def convert(params,
 
     mo.lnf_g = params["ln_f"]["g"]
     mo.lnf_b = params["ln_f"]["b"]
+
+    mo.decoder_idx  = decoder_idx
+    mo.decoder_txt  = decoder_txt
+    mo.vocab_idx    = vocab_idx
+    mo.vocab_txt    = vocab_txt
+    mo.byte_decoder = byte_decoder
 
     t2 = clock()
     print("Transform time: ", t2 - t1)
@@ -467,26 +479,33 @@ def convert(params,
 
     floff, decoder_idxi = restore_ints(DecoderIdxShape, floff)
     assert np.all(decoder_idxi == decoder_idx)
+    m.decoder_idx = decoder_idxi
 
     with open("model.dat", "rb") as f:
         f.seek(floff)
         decoder_txti_ub : bytes = f.read(DecoderTxtUtf8Len)
         decoder_txti_u = decoder_txti_ub.decode("utf-8")
         assert len(decoder_txti_u) == DecoderTxtAsciiLen
+        assert decoder_txti_u == decoder_txt
+        m.decoder_idx = decoder_txti_u
         floff += DecoderTxtUtf8Len
 
     floff, vocab_idxi = restore_ints(VocabIdxShape, floff)
     assert np.all(vocab_idxi == vocab_idx)
+    m.vocab_idx = vocab_idxi
 
     with open("model.dat", "rb") as f:
         f.seek(floff)
         vocab_txt_ub : bytes = f.read(VocabTxtUtf8Len)
         vocab_txt_u = vocab_txt_ub.decode("utf-8")
         assert len(vocab_txt_u) == VocabTxtAsciiLen
+        assert vocab_txt_u == vocab_txt
+        m.vocab_txt = vocab_txt_u
         floff += VocabTxtUtf8Len
 
     floff, byte_decoderi = restore_ints(DecoderShape, floff)
-    assert np.all(vocab_idxi == vocab_idx)
+    assert np.all(byte_decoderi == byte_decoder)
+    m.byte_decoder = byte_decoderi
 
     t2 = clock()
     print("Restore time: ", t2 - t1)
@@ -559,27 +578,39 @@ def make_empty_model_with_metadata(
         vocab_txt_len    = vocab_txt_len,
         byte_decoder_len = byte_decoder_len,
 
-        mlp_fc_w    = np.empty((n_layer, n_embd, 4 * n_embd) , dtype=np.float32),
-        mlp_fc_b    = np.empty((n_layer, 4 * n_embd)         , dtype=np.float32),
-        mlp_proj_w  = np.empty((n_layer, 4 * n_embd, n_embd) , dtype=np.float32),
-        mlp_proj_b  = np.empty((n_layer, n_embd)             , dtype=np.float32),
-        attn_w      = np.empty((n_layer, n_embd, 3 * n_embd) , dtype=np.float32),
-        attn_b      = np.empty((n_layer, 3 * n_embd)         , dtype=np.float32),
-        attn_proj_w = np.empty((n_layer, n_embd, n_embd)     , dtype=np.float32),
-        attn_proj_b = np.empty((n_layer, n_embd)             , dtype=np.float32),
-        ln1_g       = np.empty((n_layer, n_embd)             , dtype=np.float32),
-        ln1_b       = np.empty((n_layer, n_embd)             , dtype=np.float32),
-        ln2_g       = np.empty((n_layer, n_embd)             , dtype=np.float32),
-        ln2_b       = np.empty((n_layer, n_embd)             , dtype=np.float32),
-        wte         = np.empty(0                             , dtype=np.float32),
-        wpe         = np.empty(0                             , dtype=np.float32),
-        lnf_g       = np.empty(0                             , dtype=np.float32),
-        lnf_b       = np.empty(0                             , dtype=np.float32),
+        mlp_fc_w     = np.empty((n_layer, n_embd, 4 * n_embd) , dtype=np.float32),
+        mlp_fc_b     = np.empty((n_layer, 4 * n_embd)         , dtype=np.float32),
+        mlp_proj_w   = np.empty((n_layer, 4 * n_embd, n_embd) , dtype=np.float32),
+        mlp_proj_b   = np.empty((n_layer, n_embd)             , dtype=np.float32),
+        attn_w       = np.empty((n_layer, n_embd, 3 * n_embd) , dtype=np.float32),
+        attn_b       = np.empty((n_layer, 3 * n_embd)         , dtype=np.float32),
+        attn_proj_w  = np.empty((n_layer, n_embd, n_embd)     , dtype=np.float32),
+        attn_proj_b  = np.empty((n_layer, n_embd)             , dtype=np.float32),
+        ln1_g        = np.empty((n_layer, n_embd)             , dtype=np.float32),
+        ln1_b        = np.empty((n_layer, n_embd)             , dtype=np.float32),
+        ln2_g        = np.empty((n_layer, n_embd)             , dtype=np.float32),
+        ln2_b        = np.empty((n_layer, n_embd)             , dtype=np.float32),
+        wte          = np.empty(0                             , dtype=np.float32),
+        wpe          = np.empty(0                             , dtype=np.float32),
+        lnf_g        = np.empty(0                             , dtype=np.float32),
+        lnf_b        = np.empty(0                             , dtype=np.float32),
+
+        decoder_idx  = np.empty(0                             , dtype=np.int32),
+        decoder_txt  = '',
+        vocab_idx    = np.empty(0                             , dtype=np.int32),
+        vocab_txt    = '',
+        byte_decoder = np.empty(0                             , dtype=np.int32),
     )
     return mo
 
 
-def check_model(mo, n_vocab, idx, vocab_idx, byte_decoder, n_embd, nblocks):
+def check_model(mo,
+                n_vocab,
+                decoder_idx,
+                vocab_idx,
+                byte_decoder,
+                n_embd,
+                nblocks):
     check_model_metadata(mo)
 
     assert mo.mlp_fc_w.shape    == (nblocks,) + MlpCFcWShape
@@ -598,12 +629,12 @@ def check_model(mo, n_vocab, idx, vocab_idx, byte_decoder, n_embd, nblocks):
     assert mo.wpe.shape         == ParamsWpeShape
     assert mo.lnf_g.shape       == BlockLnGShape
     assert mo.lnf_b.shape       == BlockLnBShape
+
     assert n_vocab              == ParamsWteShape[0] == mo.n_vocab
     assert np.size(mo.wte, 1)   == n_embd
-    assert idx.shape            == (mo.decoder_idx_len,)
+    assert decoder_idx.shape    == (mo.decoder_idx_len,)
     assert vocab_idx.shape      == (mo.vocab_idx_len,)
     assert byte_decoder.shape   == (mo.byte_decoder_len,)
-
 
 def check_model_metadata(mo):
     assert mo.model_type       == ModelType
@@ -613,6 +644,7 @@ def check_model_metadata(mo):
     assert mo.n_embd           == NEmbed
     assert mo.n_layer          == NBlocks
     assert mo.n_head           == NBlocks
+
     assert mo.decoder_idx_len  == DecoderIdxShape[0]
     assert mo.decoder_txt_len  == DecoderTxtUtf8Len
     assert mo.vocab_idx_len    == VocabIdxShape[0]
