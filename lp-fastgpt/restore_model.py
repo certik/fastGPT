@@ -386,12 +386,62 @@ def check_model_metadata(mo):
     assert mo.byte_encoder_len == DecoderShape[0]
 
 
+def tokenize_word(input_ : str, i : int) -> tuple[str, int]:
+    result = ('', i)
+    i0 : int = i
+    if input_ == ' ':  # only one leading space ?
+        i += 1
+    while True:
+        ci: str = input_[i]
+        if i >= len(input_) or ci == ' ' or ci == '.' or ci == ',':
+            result = (input_[i0:i], i)
+            return result
+        i += 1
+
+
 def next_token(input_ : str, i : int) -> tuple[str, int]:
     result = ('', i)
+    ci : str = input_[i]
     if i >= len(input_):
-        return '', i
-    # elif
+        return result
+    elif ci == ' ':
+        result = tokenize_word(input_, i)
+    elif ci == ',' or ci == '.':
+        i += 1
+        result = (ci, i)
+    else:
+        result = tokenize_word(input_, i)
     return result
+
+
+def merge_utf8_pairs(token : str) -> str:
+    from copy import copy
+    tokens        : str = copy(token)
+    i             : int
+    j             : int
+    ic            : int
+    one_more_pass : bool = True
+
+    j = 0
+    while one_more_pass:
+        for i in range(j, len(tokens)):
+            pass
+        pass
+    return tokens
+
+
+def bpe(m : Model, token : str) -> str:
+    tokens         : str =  ''
+    pair_scores          =  []
+    not_found      : int =  0
+    merge_pair_idx : int =  0
+    i              : int =  0
+    MAGIC          : int = 10
+
+    not_found = len(m.vocab_idx) + MAGIC
+    tokens = merge_utf8_pairs(token)
+
+    return tokens
 
 
 def encode(m : Model, input_ : str, byte_decoder : np.ndarray) -> np.ndarray:
@@ -403,10 +453,18 @@ def encode(m : Model, input_ : str, byte_decoder : np.ndarray) -> np.ndarray:
     # Python does not have \p for punctuation.
     # rex = re.compile(r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""")
     # rex.match(input_)
-    # while True:
-    #     tmp : str = next_token(input_, i)
-    #     if tmp == '':
-    #         break
+    while True:
+        tmp : str
+        tmp, i = next_token(input_, i)
+        t : str
+        for t in tmp:
+            c : int = ord(t)
+            e = m.byte_encoder[c]
+            tmp2 : bytes = t.encode("utf-8")
+            tmp3 : int = ord(tmp2)
+            pass
+        if tmp == '':
+            break
     return tokens2
 
 

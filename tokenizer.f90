@@ -170,6 +170,12 @@ contains
         allocate(tokens(len(token)))
         do i = 1, len(token)
             tokens(i)%s = token(i:i)
+            print "(a)", "i"
+            print *, i
+            print "(a)", "tokens(i)%s"
+            print *, tokens(i)%s
+            print "(a)", "token(i:i)"
+            print *, token(i:i)
         end do
         tokens = merge_utf8_pairs(tokens)
         do
