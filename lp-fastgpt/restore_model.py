@@ -414,20 +414,38 @@ def next_token(input_ : str, i : int) -> tuple[str, int]:
     return result
 
 
+def merge_pair(intokens : bytearray, idx : int) -> bytearray:
+    tokens       : bytearray
+    merged_token : bytearray = bytearray(2)
+    i            : str
+
+    merged_token[0] = intokens[idx]
+    merged_token[1] = intokens[idx + 1]
+    tokens = intokens.copy()
+    tokens
+    return tokens
+
+
 def merge_utf8_pairs(token : str) -> str:
-    from copy import copy
-    tokens        : str = copy(token)
+    tokens        : bytearray
     i             : int
     j             : int
     ic            : int
     one_more_pass : bool = True
 
+    tokens = bytearray(token.encode("utf-8"))
     j = 0
     while one_more_pass:
+        one_more_pass = False
         for i in range(j, len(tokens)):
-            pass
-        pass
-    return tokens
+            ic : int = tokens[i]
+            if ic < 0:
+                ic += 256
+            if ic >= 128:
+                tokens = merge_pair(tokens, i)
+                one_more_pass = True
+                j = i + 1
+    return tokens.decode("utf-8")
 
 
 def bpe(m : Model, token : str) -> str:
