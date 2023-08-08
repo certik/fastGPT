@@ -480,9 +480,8 @@ def encode(m : Model, input_ : str, byte_decoder : np.ndarray) -> np.ndarray:
             e = m.byte_encoder[c]
             tmp2 : bytes = t.encode("utf-8")
             tmp3 : int = ord(tmp2)
-            pass
         if tmp == '':
-            break
+            continue
     return tokens2
 
 
