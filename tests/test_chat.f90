@@ -19,5 +19,5 @@ inputs = [ &
     string("What color is snow?"), &
     string("What color do plants usually have?") &
     ]
-call chat(inputs(:3))
+call chat(.true., inputs(:3))
 end program
