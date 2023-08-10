@@ -413,16 +413,16 @@ def next_token(input_ : str, i : int) -> tuple[str, int]:
         result = tokenize_word(input_, i)
     return result
 
-
 def merge_pair(intokens : bytearray, idx : int) -> bytearray:
     tokens       : bytearray
     merged_token : bytearray = bytearray(2)
-    i            : str
-
+    i: int
     merged_token[0] = intokens[idx]
     merged_token[1] = intokens[idx + 1]
-    tokens = intokens.copy()
-    tokens
+    tokens = intokens[:idx].copy()
+    tokens[idx] = merged_token
+    for i in range(idx+2, len(intokens)):
+        tokens[i-1] = intokens[i]
     return tokens
 
 
