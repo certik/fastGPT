@@ -447,18 +447,43 @@ def merge_utf8_pairs(token : str) -> str:
                 j = i + 1
     return tokens.decode("utf-8")
 
+def c2s(x: np.ndarray) -> str:
+    y = ''
+    for i in range(len(x)):
+        y += chr(x[i])
+    return y
+
+def word_idx(word: str, idx: np.ndarray, decoder_txt: str) -> int:
+    for i in range(len(idx) - 1):
+        if c2s(decoder_txt[idx[i]:idx[i + 1]]) == word:
+            return i
+    return -1
 
 def bpe(m : Model, token : str) -> str:
     tokens         : str =  ''
-    pair_scores          =  []
+    pair_scores    : list =  []
     not_found      : int =  0
     merge_pair_idx : int =  0
     i              : int =  0
     MAGIC          : int = 10
+    x              : int
 
     not_found = len(m.vocab_idx) + MAGIC
     tokens = merge_utf8_pairs(token)
 
+    while len(tokens) > 1:
+        for i in range(0, len(tokens) - 1):
+            x = word_idx(tokens[i] + " " + tokens[i + 1], m.vocab_idx, m.vocab_txt)
+            if x != -1:
+                pair_scores.append(x)
+            else:
+                pair_scores.append(not_found)
+        merge_pair_idx = pair_scores.index(min(pair_scores))
+
+        if pair_scores[merge_pair_idx] == not_found:
+            break
+
+        tokens = merge_pair(tokens, merge_pair_idx)
     return tokens
 
 
