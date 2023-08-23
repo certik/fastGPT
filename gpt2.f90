@@ -52,23 +52,10 @@ end function
 function softmax(x) result(y)
 real(sp), intent(in) :: x(:,:)
 real(sp) :: y(size(x,1),size(x,2))
-integer :: i,j
-real(sp) :: s
+integer :: i
 do i = 1, size(x,2)
-    s = -1e10
-    do j = 1, size(x,1)
-        if (x(j,i) > s) s = x(j,i)
-    end do
-    do j = 1, size(x,1)
-        y(j,i) = exp(x(j,i) - s)
-    end do
-    s = 0
-    do j = 1, size(x,1)
-        s = s + y(j,i)
-    end do
-    do j = 1, size(x,1)
-        y(j,i) = y(j,i) / s
-    end do
+    y(:,i) = exp(x(:,i) - maxval(x(:,i)))
+    y(:,i) = y(:,i) / sum(y(:,i))
 end do
 end function
 
@@ -76,41 +63,30 @@ subroutine layer_norm(y, x, g, b, eps)
 real(sp), intent(in) :: x(:,:), g(:), b(:), eps
 real(sp), intent(out) :: y(size(x,1),size(x,2))
 real(sp) :: mean(size(x,2)), variance(size(x,2))
-real(sp) :: xi(size(x,1))
-integer :: i, j
+integer :: i
 do i = 1, size(x,2)
-    do j = 1, size(x,1)
-        xi(j) = x(j,i)
-    end do
-    mean(i) = sum(xi) / size(x,1)
-    do j = 1, size(x,1)
-        xi(j) = (xi(j) - mean(i))**2
-    end do
-    variance(i) = sum(xi) / size(x,1)
+    mean(i) = sum(x(:,i)) / size(x,1)
+    variance(i) = sum((x(:,i) - mean(i))**2) / size(x,1)
 end do
 !do i = 1, size(x,1)
 !    y(i,:) = (x(i,:) - mean(:)) / sqrt(variance(:) + eps)
 !    y(i,:) = g(i) * y(i,:) + b(i)
 !end do
 do i = 1, size(x,2)
-    do j = 1, size(x,1)
-        y(j,i) = (x(j,i) - mean(i)) / sqrt(variance(i) + eps)
-        y(j,i) = g(j) * y(j,i) + b(j)
-    end do
+    y(:,i) = (x(:,i) - mean(i)) / sqrt(variance(i) + eps)
+    y(:,i) = g(:) * y(:,i) + b(:)
 end do
 end subroutine
 
 function linear(x, w, b) result(y)
 real(sp), intent(in) :: x(:,:), w(:,:), b(:)
 real(sp) :: y(size(b,1),size(x,2))
-integer :: i, j
+integer :: i
 !y = matmul(w, x) + spread(b, 2, size(x,2))
 !y = matmul(w, x)
 call matmul_2d(w, x, y)
 do i = 1, size(y,2)
-    do j = 1, size(y,1)
-        y(j,i) = y(j,i) + b(j)
-    end do
+    y(:,i) = y(:,i) + b(:)
 end do
 end function
 
