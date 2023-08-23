@@ -166,7 +166,7 @@ if (input_txt /= output_txt) then
 end if
 
 allocate(output(n_tokens_to_generate))
-print "(a)", "Running model..."
+print "(a)", "Running model...."
 call cpu_time(t1)
 t1o = omp_get_wtime()
 use_cache = .true.
