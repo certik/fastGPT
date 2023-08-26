@@ -90,17 +90,17 @@ do i = 1, size(y,2)
 end do
 end function
 
-subroutine ffn(y, x, fc_w, fc_b, proj_w, proj_b)
+function ffn(x, fc_w, fc_b, proj_w, proj_b) result(y)
 real(sp), intent(in) :: x(:,:), fc_w(:,:), fc_b(:), proj_w(:,:), proj_b(:)
-real(sp), intent(inout) :: y(size(x,1),size(x,2))
+real(sp) :: y(size(x,1),size(x,2))
 real(sp) :: yy(size(x,1),size(x,2))
 real(sp) :: a(4*size(x,1),size(x,2))
 real(sp) :: aa(4*size(x,1),size(x,2))
 aa = linear(x, fc_w, fc_b)
 a = gelu(aa)
 yy = linear(a, proj_w, proj_b)
-y = y + yy
-end subroutine
+y = yy
+end function
 
 function attention(n_embd_head,n_seq,n_seq_x, q, k, v, mask) result(y)
 integer, intent(in) :: n_embd_head, n_seq, n_seq_x
@@ -212,7 +212,7 @@ y = layer_norm(x, ln2_g, ln2_b, 1e-5_sp)
 !print *, "Out1:", y(1,1)
 !x = y
 !print *, "Out2:", x(1,1)
-call ffn(x, y, mlp_fc_w, mlp_fc_b, mlp_proj_w, mlp_proj_b)
+x = x + ffn(y, mlp_fc_w, mlp_fc_b, mlp_proj_w, mlp_proj_b)
 end subroutine
 
 subroutine gpt2(y, n_vocab, n_ctx, n_seq, n_seq_x, n_embd, n_layer, n_head, input, &
