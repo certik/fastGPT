@@ -239,14 +239,10 @@ real(sp) :: yy(n_embd,n_seq_x)
 integer :: i, j
 if (use_kv_cache) then
     i = n_seq
-    do j = 1, n_embd
-        x(j,1) = wte(j,input(i)+1) + wpe(j,i)
-    end do
+    x(:,1) = wte(:,input(i)+1) + wpe(:,i)
 else
     do i = 1, n_seq
-        do j = 1, n_embd
-            x(j,i) = wte(j,input(i)+1) + wpe(j,i)
-        end do
+        x(:,i) = wte(:,input(i)+1) + wpe(:,i)
     end do
 end if
 !print *, "It fails below:"
