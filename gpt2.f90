@@ -59,9 +59,9 @@ do i = 1, size(x,2)
 end do
 end function
 
-subroutine layer_norm(y, x, g, b, eps)
+function layer_norm(x, g, b, eps) result(y)
 real(sp), intent(in) :: x(:,:), g(:), b(:), eps
-real(sp), intent(out) :: y(size(x,1),size(x,2))
+real(sp) :: y(size(x,1),size(x,2))
 real(sp) :: mean(size(x,2)), variance(size(x,2))
 integer :: i
 do i = 1, size(x,2)
@@ -76,7 +76,7 @@ do i = 1, size(x,2)
     y(:,i) = (x(:,i) - mean(i)) / sqrt(variance(i) + eps)
     y(:,i) = g(:) * y(:,i) + b(:)
 end do
-end subroutine
+end function
 
 function linear(x, w, b) result(y)
 real(sp), intent(in) :: x(:,:), w(:,:), b(:)
@@ -102,10 +102,10 @@ yy = linear(a, proj_w, proj_b)
 y = y + yy
 end subroutine
 
-subroutine attention(y, n_embd_head,n_seq,n_seq_x, q, k, v, mask)
+function attention(n_embd_head,n_seq,n_seq_x, q, k, v, mask) result(y)
 integer, intent(in) :: n_embd_head, n_seq, n_seq_x
 real(sp), intent(in) :: q(n_embd_head,n_seq_x), k(n_embd_head,n_seq), v(n_embd_head,n_seq), mask(n_seq,n_seq_x)
-real(sp), intent(out) :: y(n_embd_head,n_seq_x)
+real(sp) :: y(n_embd_head,n_seq_x)
 real(sp) :: tmp(n_seq,n_seq_x)
 integer :: i, j
 !tmp = matmul(transpose(k), q)
@@ -118,7 +118,7 @@ end do
 end do
 tmp = softmax(tmp)
 call matmul_2d(v, tmp, y)
-end subroutine
+end function
 
 subroutine mha(y, n_seq, n_seq_x, n_embd, x, attn_w, attn_b, proj_w, proj_b, n_head, &
             use_kv_cache, kv_cache)
@@ -176,7 +176,7 @@ do l = 1, n_head
         v(j,i) = kv_cache((l-1)*n_embd/n_head+j,i,2)
     end do
     end do
-    call attention(yy, n_embd/n_head, n_seq, n_seq_x, q, k, v, causal_mask)
+    yy = attention(n_embd/n_head, n_seq, n_seq_x, q, k, v, causal_mask)
     do i = 1, n_seq_x
     do j = 1, n_embd/n_head
         y((l-1)*n_embd/n_head+j,i) = yy(j,i)
@@ -203,12 +203,12 @@ logical, intent(in) :: use_kv_cache
 real(sp) :: y(n_embd,n_seq_x)
 real(sp) :: yy(n_embd,n_seq_x)
 real(sp), intent(inout) :: kv_cache(n_embd,n_seq,2)
-call layer_norm(y, x, ln1_g, ln1_b, 1e-5_sp)
+y = layer_norm(x, ln1_g, ln1_b, 1e-5_sp)
 call mha(yy, n_seq, n_seq_x, n_embd, y, &
     attn_w, attn_b, attn_proj_w, attn_proj_b, n_head, use_kv_cache, kv_cache)
 x = x + yy
 !print *, "In: ", x(1,1), ln2_g(1), ln2_g(size(ln2_g)), ln2_b(1), ln2_b(size(ln2_b))
-call layer_norm(y, x, ln2_g, ln2_b, 1e-5_sp)
+y = layer_norm(x, ln2_g, ln2_b, 1e-5_sp)
 !print *, "Out1:", y(1,1)
 !x = y
 !print *, "Out2:", x(1,1)
@@ -258,7 +258,7 @@ do j = 1, n_layer
         n_head, use_kv_cache, kv_cache(:,:,:,i))
 !    print *, x(1,1)
 end do
-call layer_norm(yy, x, lnf_g, lnf_b, 1e-5)
+yy = layer_norm(x, lnf_g, lnf_b, 1e-5)
 x = yy
 !y = matmul(transpose(wte), x)
 call matmul_2d_t(wte, x, y)
