@@ -189,32 +189,24 @@ y = linear(y, proj_w, proj_b)
 end function
 
 
-subroutine transformer_block(n_seq, n_seq_x, n_embd, x, mlp_fc_w, mlp_fc_b, mlp_proj_w, mlp_proj_b, &
+function transformer_block(n_seq, n_seq_x, n_embd, x, mlp_fc_w, mlp_fc_b, mlp_proj_w, mlp_proj_b, &
         attn_w, attn_b, attn_proj_w, attn_proj_b, ln1_g, ln1_b, ln2_g, ln2_b, &
-        n_head, use_kv_cache, kv_cache)
-real(sp), intent(inout) :: x(n_embd,n_seq_x)
-real(sp), intent(in) :: &
+        n_head, use_kv_cache, kv_cache) result(y)
+real(sp), intent(in) :: x(n_embd,n_seq_x), &
     mlp_fc_w(:,:), mlp_fc_b(:), &
     mlp_proj_w(:,:), mlp_proj_b(:), &
     attn_w(:,:), attn_b(:), attn_proj_w(:,:), attn_proj_b(:), &
     ln1_g(:), ln1_b(:), ln2_g(:), ln2_b(:)
 integer, intent(in) :: n_head
 integer, intent(in) :: n_seq, n_seq_x, n_embd
-logical, intent(in) :: use_kv_cache
 real(sp) :: y(n_embd,n_seq_x)
-real(sp) :: yy(n_embd,n_seq_x)
+logical, intent(in) :: use_kv_cache
 real(sp), intent(inout) :: kv_cache(n_embd,n_seq,2)
-y = layer_norm(x, ln1_g, ln1_b, 1e-5_sp)
-yy = mha(n_seq, n_seq_x, n_embd, y, &
+y = x + mha(n_seq, n_seq_x, n_embd, layer_norm(x, ln1_g, ln1_b, 1e-5_sp), &
     attn_w, attn_b, attn_proj_w, attn_proj_b, n_head, use_kv_cache, kv_cache)
-x = x + yy
-!print *, "In: ", x(1,1), ln2_g(1), ln2_g(size(ln2_g)), ln2_b(1), ln2_b(size(ln2_b))
-y = layer_norm(x, ln2_g, ln2_b, 1e-5_sp)
-!print *, "Out1:", y(1,1)
-!x = y
-!print *, "Out2:", x(1,1)
-x = x + ffn(y, mlp_fc_w, mlp_fc_b, mlp_proj_w, mlp_proj_b)
-end subroutine
+y = y + ffn(layer_norm(y, ln2_g, ln2_b, 1e-5_sp), &
+    mlp_fc_w, mlp_fc_b, mlp_proj_w, mlp_proj_b)
+end function
 
 subroutine gpt2(y, n_vocab, n_ctx, n_seq, n_seq_x, n_embd, n_layer, n_head, input, &
         wte, wpe, &
@@ -251,7 +243,7 @@ do j = 1, n_layer
     i = j
     !i = 1
 !    print *, i ! Never gets printed
-    call transformer_block(n_seq, n_seq_x, n_embd, x, &
+    x = transformer_block(n_seq, n_seq_x, n_embd, x, &
         mlp_fc_w(:,:,i), mlp_fc_b(:,i), &
         mlp_proj_w(:,:,i), mlp_proj_b(:,i), &
         attn_w(:,:,i), attn_b(:,i), attn_proj_w(:,:,i), attn_proj_b(:,i), &
