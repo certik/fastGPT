@@ -257,17 +257,17 @@ x = yy
 call matmul_2d_t(wte, x, y)
 end subroutine
 
-subroutine generate(output, n_tokens_to_generate, m, &
+function generate(n_tokens_to_generate, m, &
         n_seq, input, &
         use_cache, &
-        byte_decoder, stop_text)
+        byte_decoder, stop_text) result(output)
 integer, intent(in) :: n_seq, n_tokens_to_generate
 type(model_t), intent(in) :: m
 integer, intent(in) :: input(n_seq)
 logical, intent(in) :: use_cache
 integer, intent(in) :: byte_decoder(:)
 character(*), intent(in), optional :: stop_text ! Stop if you see this text
-integer, allocatable, intent(out) :: output(:)
+integer, allocatable :: output(:)
 real(sp), allocatable :: logits(:,:)
 integer :: i, i1, i2, i3, i4
 integer :: n_seq2, n_seq_x
@@ -337,6 +337,6 @@ do i = 1, n_tokens_to_generate
 end do
 allocate(output(n_seq2 - n_seq + 1))
 output(:) = input2(n_seq+1:n_seq2+1)
-end subroutine
+end function
 
 end module
