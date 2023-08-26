@@ -346,11 +346,8 @@ do i = 1, n_tokens_to_generate
     end if
     deallocate(logits)
 end do
-! output = input2(n_seq+1:n_seq2+1)
 allocate(output(n_seq2 - n_seq + 1))
-do i = 1, n_seq2 - n_seq + 1
-    output(i) = input2(n_seq+i)
-end do
+output(:) = input2(n_seq+1:n_seq2+1)
 end subroutine
 
 end module
