@@ -208,12 +208,12 @@ y = y + ffn(layer_norm(y, ln2_g, ln2_b, 1e-5_sp), &
     mlp_fc_w, mlp_fc_b, mlp_proj_w, mlp_proj_b)
 end function
 
-subroutine gpt2(y, n_vocab, n_ctx, n_seq, n_seq_x, n_embd, n_layer, n_head, input, &
+function gpt2(n_vocab, n_ctx, n_seq, n_seq_x, n_embd, n_layer, n_head, input, &
         wte, wpe, &
         mlp_fc_w, mlp_fc_b, mlp_proj_w, mlp_proj_b, &
         attn_w, attn_b, attn_proj_w, attn_proj_b, &
         ln1_g, ln1_b, ln2_g, ln2_b, lnf_g, lnf_b, &
-        use_kv_cache, kv_cache)
+        use_kv_cache, kv_cache) result(y)
 integer, intent(in) :: n_vocab, n_ctx, n_seq, n_seq_x, n_embd, n_layer, n_head
 integer, intent(in) :: input(n_seq)
 real(sp), intent(in) :: wte(n_embd,n_vocab), wpe(n_embd,n_ctx), &
@@ -226,7 +226,8 @@ real(sp), intent(in) :: wte(n_embd,n_vocab), wpe(n_embd,n_ctx), &
     lnf_b(n_embd), lnf_g(n_embd)
 logical, intent(in) :: use_kv_cache
 real(sp), intent(inout) :: kv_cache(n_embd,n_seq,2,n_layer)
-real(sp), intent(out) :: y(n_vocab,n_seq_x)
+real(sp) :: y(n_vocab)
+real(sp) :: y3(n_vocab, 1)
 real(sp) :: x(n_embd,n_seq_x)
 real(sp) :: yy(n_embd,n_seq_x)
 integer :: i, j
@@ -254,8 +255,9 @@ end do
 yy = layer_norm(x, lnf_g, lnf_b, 1e-5)
 x = yy
 !y = matmul(transpose(wte), x)
-call matmul_2d_t(wte, x, y)
-end subroutine
+call matmul_2d_t(wte, x(:,n_seq_x:n_seq_x), y3)
+y = y3(:,1)
+end function
 
 function generate(n_tokens_to_generate, m, &
         n_seq, input, &
@@ -268,7 +270,7 @@ logical, intent(in) :: use_cache
 integer, intent(in) :: byte_decoder(:)
 character(*), intent(in), optional :: stop_text ! Stop if you see this text
 integer, allocatable :: output(:)
-real(sp), allocatable :: logits(:,:)
+real(sp) :: logits(m%n_vocab)
 integer :: i, i1, i2, i3, i4
 integer :: n_seq2, n_seq_x
 integer :: next_id
@@ -293,7 +295,6 @@ do i = 1, n_tokens_to_generate
     else
         n_seq_x = n_seq2
     end if
-    allocate(logits(m%n_vocab, n_seq_x))
     allocate(kv_cache2(m%n_embd,n_seq2,2,m%n_layer))
     do i4 = 1, m%n_layer
     do i3 = 1, 2
@@ -304,7 +305,7 @@ do i = 1, n_tokens_to_generate
     end do
     end do
     end do
-    call gpt2(logits, m%n_vocab, m%n_ctx, n_seq2, n_seq_x, m%n_embd, m%n_layer, &
+    logits = gpt2(m%n_vocab, m%n_ctx, n_seq2, n_seq_x, m%n_embd, m%n_layer, &
             m%n_head, &
             input2(:n_seq2), &
             m%wte, m%wpe, &
@@ -322,7 +323,7 @@ do i = 1, n_tokens_to_generate
     end do
     end do
     deallocate(kv_cache2)
-    next_id = maxloc(logits(:,n_seq_x), dim=1)-1
+    next_id = maxloc(logits(:), dim=1)-1
     input2(n_seq2+1) = next_id
     last_token = decode([next_id], m%decoder_idx, &
         m%decoder_txt, byte_decoder)
@@ -333,7 +334,6 @@ do i = 1, n_tokens_to_generate
             exit
         end if
     end if
-    deallocate(logits)
 end do
 allocate(output(n_seq2 - n_seq + 1))
 output(:) = input2(n_seq+1:n_seq2+1)
