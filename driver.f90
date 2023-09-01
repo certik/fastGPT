@@ -163,12 +163,11 @@ if (input_txt /= output_txt) then
     error stop "The decoded input text does not agree with the input text"
 end if
 
-allocate(output(n_tokens_to_generate))
 print "(a)", "Running model..."
 call cpu_time(t1)
 t1o = omp_get_wtime()
 use_cache = .true.
-output = generate(n_tokens_to_generate, m, size(input), input, use_cache, &
+call generate(output, n_tokens_to_generate, m, size(input), input, use_cache, &
     byte_decoder)
 print *
 t2o = omp_get_wtime()
@@ -214,7 +213,7 @@ if (input_txt /= output_txt) then
     error stop "The decoded input text does not agree with the input text"
 end if
 use_cache = .true.
-output = generate(n_tokens_to_generate, m, size(input), input, use_cache, &
+call generate(output, n_tokens_to_generate, m, size(input), input, use_cache, &
     byte_decoder, stop_text)
 output_txt = decode(output, m%decoder_idx, m%decoder_txt, byte_decoder)
 end subroutine

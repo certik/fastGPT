@@ -232,17 +232,17 @@ x = layer_norm(x, lnf_g, lnf_b, 1e-5)
 call matmul_2d_t(wte, x, y)
 end function
 
-function generate(n_tokens_to_generate, m, &
+subroutine generate(output, n_tokens_to_generate, m, &
         n_seq, input, &
         use_cache, &
-        byte_decoder, stop_text) result(output)
+        byte_decoder, stop_text)
 integer, intent(in) :: n_seq, n_tokens_to_generate
 type(model_t), intent(in) :: m
 integer, intent(in) :: input(n_seq)
 logical, intent(in) :: use_cache
 integer, intent(in) :: byte_decoder(:)
 character(*), intent(in), optional :: stop_text ! Stop if you see this text
-integer, allocatable :: output(:)
+integer, allocatable, intent(out) :: output(:)
 real(sp), allocatable :: logits(:,:)
 integer :: i
 integer :: n_seq2, n_seq_x
@@ -290,6 +290,6 @@ do i = 1, n_tokens_to_generate
     deallocate(logits)
 end do
 output = input2(n_seq+1:)
-end function
+end subroutine
 
 end module
