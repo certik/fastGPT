@@ -93,13 +93,9 @@ end function
 function ffn(x, fc_w, fc_b, proj_w, proj_b) result(y)
 real(sp), intent(in) :: x(:,:), fc_w(:,:), fc_b(:), proj_w(:,:), proj_b(:)
 real(sp) :: y(size(x,1),size(x,2))
-real(sp) :: yy(size(x,1),size(x,2))
-real(sp) :: a(4*size(x,1),size(x,2))
-real(sp) :: aa(4*size(x,1),size(x,2))
-aa = linear(x, fc_w, fc_b)
-a = gelu(aa)
-yy = linear(a, proj_w, proj_b)
-y = yy
+!real(sp) :: a(4*size(x,1),size(x,2))
+!a = gelu(linear(x, fc_w, fc_b))
+y = linear(gelu(linear(x, fc_w, fc_b)), proj_w, proj_b)
 end function
 
 function attention(n_embd_head,n_seq,n_seq_x, q, k, v, mask) result(y)
@@ -110,8 +106,7 @@ real(sp) :: tmp(n_seq,n_seq_x)
 !tmp = matmul(transpose(k), q)
 !call matmul_2d(transpose(k), q, tmp)
 call matmul_2d_t(k, q, tmp)
-tmp = tmp / sqrt(real(n_embd_head,sp)) + mask
-call matmul_2d(v, softmax(tmp), y)
+call matmul_2d(v, softmax(tmp / sqrt(real(n_embd_head,sp)) + mask), y)
 end function
 
 function mha(n_seq, n_seq_x, n_embd, x, attn_w, attn_b, proj_w, proj_b, n_head, &
