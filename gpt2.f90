@@ -111,11 +111,7 @@ integer :: i, j
 !tmp = matmul(transpose(k), q)
 !call matmul_2d(transpose(k), q, tmp)
 call matmul_2d_t(k, q, tmp)
-do i = 1, n_seq_x
-do j = 1, n_seq
-    tmp(j,i) = tmp(j,i) / sqrt(real(n_embd_head,sp)) + mask(j,i)
-end do
-end do
+tmp = tmp / sqrt(real(n_embd_head,sp)) + mask
 tmp = softmax(tmp)
 call matmul_2d(v, tmp, y)
 end function
