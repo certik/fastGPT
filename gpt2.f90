@@ -122,7 +122,9 @@ logical, intent(in) :: use_kv_cache
 real(sp) :: y(n_embd,n_seq_x)
 real(sp) :: causal_mask(n_seq,n_seq_x)
 real(sp) :: x2(3*n_embd,n_seq_x)
-integer :: i, j
+real(sp) :: q(n_embd/n_head,n_seq_x), k(n_embd/n_head,n_seq), v(n_embd/n_head,n_seq)
+real(sp) :: yy(n_embd/n_head,n_seq_x)
+integer :: i, j, l
 ! Mask
 if (use_kv_cache) then
     causal_mask = 0
@@ -138,34 +140,39 @@ else
     end do
 end if
 x2 = linear(x, attn_w, attn_b)
-associate ( &
-        q => x2((1-1)*n_embd+1:1*n_embd,:), &
-        k => x2((2-1)*n_embd+1:2*n_embd,:), &
-        v => x2((3-1)*n_embd+1:3*n_embd,:)  &
-    )
-    if (use_kv_cache) then
-        kv_cache(:,n_seq,1) = k(:,1)
-        kv_cache(:,n_seq,2) = v(:,1)
-    else
-        kv_cache(:,:,1) = k
-        kv_cache(:,:,2) = v
-    end if
-end associate
-associate ( &
-        q => x2((1-1)*n_embd+1:1*n_embd,:), &
-        k => kv_cache(:,:,1), &
-        v => kv_cache(:,:,2)  &
-    )
-    ! Perform attention over each head
-    do i = 1, n_head
-        y((i-1)*n_embd/n_head+1:i*n_embd/n_head,:) = attention( &
-            n_embd/n_head, n_seq, n_seq_x, &
-            q((i-1)*n_embd/n_head+1:i*n_embd/n_head,:), &
-            k((i-1)*n_embd/n_head+1:i*n_embd/n_head,:), &
-            v((i-1)*n_embd/n_head+1:i*n_embd/n_head,:), &
-            causal_mask)
+if (use_kv_cache) then
+    do j = 1, n_embd
+        kv_cache(j,n_seq,1) = x2((2-1)*n_embd+j,1)
+        kv_cache(j,n_seq,2) = x2((3-1)*n_embd+j,1)
     end do
-end associate
+else
+    do i = 1, n_seq
+    do j = 1, n_embd
+        kv_cache(j,i,1) = x2((2-1)*n_embd+j,i)
+        kv_cache(j,i,2) = x2((3-1)*n_embd+j,i)
+    end do
+    end do
+end if
+! Perform attention over each head
+do l = 1, n_head
+    do i = 1, n_seq_x
+    do j = 1, n_embd/n_head
+        q(j,i) = x2((l-1)*n_embd/n_head+j,i)
+    end do
+    end do
+    do i = 1, n_seq
+    do j = 1, n_embd/n_head
+        k(j,i) = kv_cache((l-1)*n_embd/n_head+j,i,1)
+        v(j,i) = kv_cache((l-1)*n_embd/n_head+j,i,2)
+    end do
+    end do
+    yy = attention(n_embd/n_head, n_seq, n_seq_x, q, k, v, causal_mask)
+    do i = 1, n_seq_x
+    do j = 1, n_embd/n_head
+        y((l-1)*n_embd/n_head+j,i) = yy(j,i)
+    end do
+    end do
+end do
 ! Out projection
 y = linear(y, proj_w, proj_b)
 end function
@@ -250,6 +257,7 @@ integer :: next_id
 integer :: input2(size(input)+n_tokens_to_generate)
 logical :: use_kv_cache
 real(sp) :: kv_cache(m%n_embd,n_seq+n_tokens_to_generate,2,m%n_layer)
+real(sp), allocatable :: kv_cache2(:,:,:,:)
 character(:), allocatable :: output_txt, last_token
 if (present(stop_text)) then
     allocate(character(0) :: output_txt)
@@ -268,6 +276,8 @@ do i = 1, n_tokens_to_generate
     else
         n_seq_x = n_seq2
     end if
+    allocate(kv_cache2(m%n_embd,n_seq2,2,m%n_layer))
+    kv_cache2(:,:,:,:) = kv_cache(:,:n_seq2,:,:)
     allocate(logits(m%n_vocab, n_seq_x))
     logits = gpt2(m%n_vocab, m%n_ctx, n_seq2, n_seq_x, m%n_embd, m%n_layer, &
             m%n_head, &
@@ -275,7 +285,10 @@ do i = 1, n_tokens_to_generate
             m%wte, m%wpe, &
             m%mlp_fc_w, m%mlp_fc_b, m%mlp_proj_w, m%mlp_proj_b, &
             m%attn_w, m%attn_b, m%attn_proj_w, m%attn_proj_b, &
-            m%ln1_g, m%ln1_b, m%ln2_g, m%ln2_b, m%lnf_g, m%lnf_b, use_kv_cache, kv_cache(:,:n_seq2,:,:))
+            m%ln1_g, m%ln1_b, m%ln2_g, m%ln2_b, m%lnf_g, m%lnf_b, use_kv_cache,&
+            kv_cache2)
+    kv_cache(:,:n_seq2,:,:) = kv_cache2(:,:,:,:)
+    deallocate(kv_cache2)
     next_id = maxloc(logits(:,n_seq_x), dim=1)-1
     input2(n_seq2+1) = next_id
     last_token = decode([next_id], m%decoder_idx, &
