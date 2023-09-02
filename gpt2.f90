@@ -107,7 +107,6 @@ integer, intent(in) :: n_embd_head, n_seq, n_seq_x
 real(sp), intent(in) :: q(n_embd_head,n_seq_x), k(n_embd_head,n_seq), v(n_embd_head,n_seq), mask(n_seq,n_seq_x)
 real(sp) :: y(n_embd_head,n_seq_x)
 real(sp) :: tmp(n_seq,n_seq_x)
-integer :: i, j
 !tmp = matmul(transpose(k), q)
 !call matmul_2d(transpose(k), q, tmp)
 call matmul_2d_t(k, q, tmp)
