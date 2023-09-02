@@ -106,8 +106,7 @@ real(sp) :: tmp(n_seq,n_seq_x)
 !tmp = matmul(transpose(k), q)
 !call matmul_2d(transpose(k), q, tmp)
 call matmul_2d_t(k, q, tmp)
-tmp = tmp / sqrt(real(n_embd_head,sp)) + mask
-call matmul_2d(v, softmax(tmp), y)
+call matmul_2d(v, softmax(tmp / sqrt(real(n_embd_head,sp)) + mask), y)
 end function
 
 function mha(n_seq, n_seq_x, n_embd, x, attn_w, attn_b, proj_w, proj_b, n_head, &
