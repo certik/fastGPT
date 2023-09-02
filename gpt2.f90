@@ -112,8 +112,7 @@ integer :: i, j
 !call matmul_2d(transpose(k), q, tmp)
 call matmul_2d_t(k, q, tmp)
 tmp = tmp / sqrt(real(n_embd_head,sp)) + mask
-tmp = softmax(tmp)
-call matmul_2d(v, tmp, y)
+call matmul_2d(v, softmax(tmp), y)
 end function
 
 function mha(n_seq, n_seq_x, n_embd, x, attn_w, attn_b, proj_w, proj_b, n_head, &
