@@ -42,6 +42,7 @@ integer, parameter :: current_model_mark = 262477463
 integer, parameter :: current_model_version = 1
 integer :: model_mark
 integer :: u
+u = 15 ! https://github.com/lfortran/lfortran/issues/2311
 open(newunit=u, file=filename, form="unformatted", access="stream", status="old")
 read(u) model_mark
 if (model_mark /= current_model_mark) then
