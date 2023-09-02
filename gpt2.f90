@@ -122,7 +122,9 @@ logical, intent(in) :: use_kv_cache
 real(sp) :: y(n_embd,n_seq_x)
 real(sp) :: causal_mask(n_seq,n_seq_x)
 real(sp) :: x2(3*n_embd,n_seq_x)
-integer :: i, j
+real(sp) :: q(n_embd/n_head,n_seq_x), k(n_embd/n_head,n_seq), v(n_embd/n_head,n_seq)
+real(sp) :: yy(n_embd/n_head,n_seq_x)
+integer :: i, j, l
 ! Mask
 if (use_kv_cache) then
     causal_mask = 0
@@ -138,34 +140,39 @@ else
     end do
 end if
 x2 = linear(x, attn_w, attn_b)
-associate ( &
-        q => x2((1-1)*n_embd+1:1*n_embd,:), &
-        k => x2((2-1)*n_embd+1:2*n_embd,:), &
-        v => x2((3-1)*n_embd+1:3*n_embd,:)  &
-    )
-    if (use_kv_cache) then
-        kv_cache(:,n_seq,1) = k(:,1)
-        kv_cache(:,n_seq,2) = v(:,1)
-    else
-        kv_cache(:,:,1) = k
-        kv_cache(:,:,2) = v
-    end if
-end associate
-associate ( &
-        q => x2((1-1)*n_embd+1:1*n_embd,:), &
-        k => kv_cache(:,:,1), &
-        v => kv_cache(:,:,2)  &
-    )
-    ! Perform attention over each head
-    do i = 1, n_head
-        y((i-1)*n_embd/n_head+1:i*n_embd/n_head,:) = attention( &
-            n_embd/n_head, n_seq, n_seq_x, &
-            q((i-1)*n_embd/n_head+1:i*n_embd/n_head,:), &
-            k((i-1)*n_embd/n_head+1:i*n_embd/n_head,:), &
-            v((i-1)*n_embd/n_head+1:i*n_embd/n_head,:), &
-            causal_mask)
+if (use_kv_cache) then
+    do j = 1, n_embd
+        kv_cache(j,n_seq,1) = x2((2-1)*n_embd+j,1)
+        kv_cache(j,n_seq,2) = x2((3-1)*n_embd+j,1)
     end do
-end associate
+else
+    do i = 1, n_seq
+    do j = 1, n_embd
+        kv_cache(j,i,1) = x2((2-1)*n_embd+j,i)
+        kv_cache(j,i,2) = x2((3-1)*n_embd+j,i)
+    end do
+    end do
+end if
+! Perform attention over each head
+do l = 1, n_head
+    do i = 1, n_seq_x
+    do j = 1, n_embd/n_head
+        q(j,i) = x2((l-1)*n_embd/n_head+j,i)
+    end do
+    end do
+    do i = 1, n_seq
+    do j = 1, n_embd/n_head
+        k(j,i) = kv_cache((l-1)*n_embd/n_head+j,i,1)
+        v(j,i) = kv_cache((l-1)*n_embd/n_head+j,i,2)
+    end do
+    end do
+    yy = attention(n_embd/n_head, n_seq, n_seq_x, q, k, v, causal_mask)
+    do i = 1, n_seq_x
+    do j = 1, n_embd/n_head
+        y((l-1)*n_embd/n_head+j,i) = yy(j,i)
+    end do
+    end do
+end do
 ! Out projection
 y = linear(y, proj_w, proj_b)
 end function
