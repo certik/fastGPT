@@ -252,6 +252,7 @@ logical :: use_kv_cache
 real(sp) :: kv_cache(m%n_embd,n_seq+n_tokens_to_generate,2,m%n_layer)
 character(:), allocatable :: output_txt, last_token
 if (present(stop_text)) then
+    allocate(character(0) :: output_txt)
     output_txt = ""
 end if
 input2(:n_seq) = input
