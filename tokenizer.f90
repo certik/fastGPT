@@ -113,16 +113,11 @@ type(string), intent(in) :: intokens(:)
 integer, intent(in) :: idx
 type(string), allocatable :: tokens(:)
 type(string) :: merged_token
-integer :: i
 merged_token%s = intokens(idx)%s // intokens(idx+1)%s
 allocate(tokens(size(intokens)-1))
-do i = 1, idx-1
-    tokens(i) = intokens(i)
-end do
+tokens(:idx-1) = intokens(:idx-1)
 tokens(idx) = merged_token
-do i = idx+2, size(intokens)
-    tokens(i-1) = intokens(i)
-end do
+tokens(idx+1:) = intokens(idx+2:)
 end function
 
 function merge_utf8_pairs(intokens) result(tokens)
