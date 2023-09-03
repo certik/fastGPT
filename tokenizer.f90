@@ -230,20 +230,11 @@ integer(1) :: output3(max_len)
 integer(1), allocatable :: output4(:)
 integer :: i, j, c, pos
 pos = 0
+output2 = ""
 do i = 1, size(tokens)
     if (tokens(i) < 0) error stop "tokens(i) < 0"
-    ! output2 = output2 // (decoder_txt(idx(tokens(i))+1:idx(tokens(i)+1)))
-    do j = idx(tokens(i))+1, idx(tokens(i)+1)
-        pos = pos + 1
-        output3(pos) = decoder_txt(j)
-    end do
+    output2 = output2 // c2s(decoder_txt(idx(tokens(i))+1:idx(tokens(i)+1)))
 end do
-allocate(character(0) :: output2) ! Fix GFortran warning
-allocate(output4(pos))
-do j = 1, pos
-    output4(j) = output3(j)
-end do
-output2 = c2s(output4)
 i = 1
 output = ""
 do
