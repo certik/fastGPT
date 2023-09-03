@@ -57,7 +57,7 @@ jobs:
         with:
           environment-file: environment.yml
           extra-specs: |
-            sel(osx): lfortran=0.20.0
+            lfortran=0.20.0
 
       - uses: hendrikmuhs/ccache-action@main
         with:
