@@ -21,7 +21,7 @@ type :: model_t
         ln2_b(:,:), ln2_g(:,:), &
         lnf_b(:), lnf_g(:)
     integer, allocatable :: decoder_idx(:), vocab_idx(:), byte_encoder(:)
-    integer(1), allocatable :: decoder_txt(:), vocab_txt(:)
+    character, allocatable :: decoder_txt(:), vocab_txt(:)
     integer :: model_file_version
 end type
 

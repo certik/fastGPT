@@ -8,12 +8,12 @@ end type
 contains
 
 function c2s(x) result(y)
-integer(1), intent(in) :: x(:)
+character, intent(in) :: x(:)
 character(:), allocatable :: y
 integer :: i
 allocate(character(size(x)) :: y)
 do i = 1, size(x)
-    y(i:i) = char(x(i))
+    y(i:i) = x(i)
 end do
 end function
 
@@ -62,7 +62,7 @@ end function
 function word_idx(word, idx, decoder_txt) result(token)
 character(*), intent(in) :: word
 integer, intent(in) :: idx(0:)
-integer(1), intent(in) :: decoder_txt(:)
+character, intent(in) :: decoder_txt(:)
 integer :: token
 integer :: i
 ! This is O(n) search instead of O(1) lookup in a dictionary, so it is slow
@@ -146,7 +146,7 @@ function bpe(token, vocab_idx, vocab_txt) result(tokens)
 ! Takes a token as a string, and returns bpe tokens as an array of strings
 character(*), intent(in) :: token
 integer, intent(in) :: vocab_idx(0:)
-integer(1), intent(in) :: vocab_txt(:)
+character, intent(in) :: vocab_txt(:)
 type(string), allocatable :: tokens(:)
 integer, allocatable :: pair_scores(:)
 integer :: not_found, merge_pair_idx
@@ -187,7 +187,7 @@ function encode(input, idx, decoder_txt, vocab_idx, vocab_txt, byte_encoder) &
         result(tokens2)
 character(*), intent(in) :: input
 integer, intent(in) :: idx(0:), vocab_idx(0:), byte_encoder(0:)
-integer(1), intent(in) :: decoder_txt(:), vocab_txt(:)
+character, intent(in) :: decoder_txt(:), vocab_txt(:)
 integer, parameter :: max_tokens = 2048
 integer :: tokens(max_tokens)
 integer, allocatable :: tokens2(:)
@@ -222,7 +222,7 @@ end function
 
 function decode(tokens, idx, decoder_txt, byte_decoder) result(output)
 integer, intent(in) :: tokens(:), idx(0:), byte_decoder(0:)
-integer(1), intent(in) :: decoder_txt(:)
+character, intent(in) :: decoder_txt(:)
 character(:), allocatable :: output
 character(:), allocatable :: output2, tmp
 integer :: i, c
