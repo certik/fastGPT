@@ -224,7 +224,7 @@ end subroutine
 function get_prompt() result(input)
 character(:), allocatable :: input
 character(1024) :: tmp
-integer ::ios
+integer ::ios = 0
 read(*,"(a)",iostat=ios) tmp
 if (ios == 0) then
     input = trim(tmp)
