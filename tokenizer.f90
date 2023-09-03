@@ -225,11 +225,8 @@ integer, intent(in) :: tokens(:), idx(0:), byte_decoder(0:)
 integer(1), intent(in) :: decoder_txt(:)
 character(:), allocatable :: output
 character(:), allocatable :: output2, tmp
-integer, parameter :: max_len = 4096
-integer(1) :: output3(max_len)
-integer(1), allocatable :: output4(:)
-integer :: i, j, c, pos
-pos = 0
+integer :: i, c
+allocate(character(0) :: output2) ! Fix GFortran warning
 output2 = ""
 do i = 1, size(tokens)
     if (tokens(i) < 0) error stop "tokens(i) < 0"
