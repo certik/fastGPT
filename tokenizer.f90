@@ -112,9 +112,10 @@ function merge_pair(intokens, idx) result(tokens)
 type(string), intent(in) :: intokens(:)
 integer, intent(in) :: idx
 type(string), allocatable :: tokens(:)
-type(string) :: merged_token
-merged_token%s = intokens(idx)%s // intokens(idx+1)%s
-tokens = [intokens(:idx-1), merged_token, intokens(idx+2:)]
+allocate(tokens(size(intokens)-1))
+tokens(:idx-1) = intokens(:idx-1)
+tokens(idx)%s = intokens(idx)%s // intokens(idx+1)%s
+tokens(idx+1:) = intokens(idx+2:)
 end function
 
 function merge_utf8_pairs(intokens) result(tokens)
