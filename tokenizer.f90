@@ -135,15 +135,11 @@ j = 1
 do while(one_more_pass)
     one_more_pass = .false.
     do i = j, size(tokens)-1
-        if (len(tokens(i)%s) == 1) then
-            ic = iachar(tokens(i)%s(1:1))
-            if (ic < 0) ic = ic + 256
-            if (ic >= 128) then
-                tokens = merge_pair(tokens, i)
-                one_more_pass = .true.
-                j = i + 1
-                exit
-            end if
+        if (len(tokens(i)%s) == 1 .and. iachar(tokens(i)%s(1:1)) >= 128) then
+            tokens = merge_pair(tokens, i)
+            one_more_pass = .true.
+            j = i + 1
+            exit
         end if
     end do
 end do
