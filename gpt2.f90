@@ -46,7 +46,31 @@ end function
 
 elemental real(sp) function gelu(x) result(y)
 real(sp), intent(in) :: x
-y = 0.5_sp * x * (1 + tanh(sqrt(2 / pi) * (x + 0.044715_sp * x**3)))
+y = 0.5_sp * x * (1 + fast_tanh(sqrt(2 / pi) * (x + 0.044715_sp * x**3)))
+end function
+
+elemental real(sp) function fast_gelu(x) result(y)
+real(sp), intent(in) :: x
+real(sp) :: x2, x_
+x_ = sqrt(2 / pi) * (x + 0.044715_sp * x**3)
+if (x_ > 5) then
+    y = x
+elseif (x_ < -5) then
+    y = 0
+else
+    x2 = x_*x_
+    y = x_ * (0.98569772605911309407 + x2 *(-0.2794500993392901382 &
+        + x2 * (6.8280504526399188164e-2 + x2 * (-1.0972014877337651823e-2 &
+        + x2 * (1.1132367134444316902e-3 + x2 * (-7.018851897305717565e-5 &
+        + x2 * (2.656616768082727089e-6 + x2 * (-5.5138381821615909058e-8 &
+        + x2 * 4.8162484477588665996e-10))))))))
+    y = 0.5_sp * x * (1 + y)
+
+    ! Alternative implementation (division is expensive)
+    !a = x * (135135.0 + x2 * (17325.0 + x2 * (378.0 + x2)))
+    !b = 135135.0 + x2 * (62370.0 + x2 * (3150.0 + x2 * 28.0))
+    !y = a / b
+end if
 end function
 
 function softmax(x) result(y)
@@ -93,9 +117,31 @@ end function
 function ffn(x, fc_w, fc_b, proj_w, proj_b) result(y)
 real(sp), intent(in) :: x(:,:), fc_w(:,:), fc_b(:), proj_w(:,:), proj_b(:)
 real(sp) :: y(size(x,1),size(x,2))
-!real(sp) :: a(4*size(x,1),size(x,2))
-!a = gelu(linear(x, fc_w, fc_b))
-y = linear(gelu(linear(x, fc_w, fc_b)), proj_w, proj_b)
+real(sp) :: a(4*size(x,1),size(x,2)), x0, x_, x2
+integer :: i, j
+!a = linear(x, fc_w, fc_b)
+call matmul_2d(fc_w, x, a)
+do i = 1, size(a,2)
+do j = 1, size(a,1)
+    !a(j,i) = fast_gelu(a(j,i) + fc_b(j))
+    x0 = a(j,i) + fc_b(j)
+    x_ = sqrt(2 / pi) * (x0 + 0.044715_sp * x0**3)
+    if (x_ > 5) then
+        a(j,i) = x0
+    elseif (x_ < -5) then
+        a(j,i) = 0
+    else
+        x2 = x_*x_
+        a(j,i) = x_ * (0.98569772605911309407 + x2 *(-0.2794500993392901382 &
+            + x2 * (6.8280504526399188164e-2 + x2 * (-1.0972014877337651823e-2 &
+            + x2 * (1.1132367134444316902e-3 + x2 * (-7.018851897305717565e-5 &
+            + x2 * (2.656616768082727089e-6 + x2 * (-5.5138381821615909058e-8 &
+            + x2 * 4.8162484477588665996e-10))))))))
+        a(j,i) = 0.5_sp * x0 * (1 + a(j,i))
+    end if
+end do
+end do
+y = linear(a, proj_w, proj_b)
 end function
 
 function attention(n_embd_head,n_seq,n_seq_x, q, k, v, mask) result(y)
