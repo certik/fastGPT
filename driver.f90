@@ -135,8 +135,7 @@ print "(a,i4)", "n_seq                =", n_seq
 print "(a,i4)", "n_tokens_to_generate =", n_tokens_to_generate
 print *
 print "(a)", "Input tokens:"
-!print "(1000(i6))", input
-print *, input
+print "(1000(i6))", input
 print *
 
 if (n_seq + n_tokens_to_generate >= m%n_ctx) then
@@ -149,7 +148,7 @@ print "(a)", "Decoded input as text:"
 !print "(a)", decode(input, decoder_idx, decoder_txt, byte_decoder)
 allocate(character(0) :: output_txt) ! Fix GFortran warning
 output_txt = decode(input, m%decoder_idx, m%decoder_txt, byte_decoder)
-print *, output_txt
+print "(a)", output_txt
 print *
 
 if (input_txt /= output_txt) then
@@ -168,11 +167,11 @@ call cpu_time(t2)
 print "(a,f8.3,a,f8.2,a)", "    done. Time:", t2o-t1o, "s (", (t2-t1)/(t2o-t1o), "x)"
 print *
 print "(a)", "Output tokens:"
-print *, output
+print "(1000(i6))", output
 output_txt = decode(output, m%decoder_idx, m%decoder_txt, byte_decoder)
 print *
 print "(a)", "Decoded output as text:"
-print *, output_txt
+print "(a)", output_txt
 end subroutine
 
 subroutine gpt2_driver3(input_txt, n_tokens_to_generate, stop_text, m, output_txt)
