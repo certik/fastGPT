@@ -124,10 +124,9 @@ type(string), intent(in) :: intokens(:)
 type(string), allocatable :: tokens(:)
 integer :: i, j
 logical :: one_more_pass
+allocate(tokens(size(intokens)))
 tokens = intokens
 one_more_pass = .true.
-!print *, "merge_utf8_pairs:", size(tokens)
-!print *, "tokens = ", (tokens(i)%s // " ", i=1,size(tokens))
 j = 1
 do while(one_more_pass)
     one_more_pass = .false.
@@ -136,7 +135,6 @@ do while(one_more_pass)
             tokens = merge_pair(tokens, i)
             one_more_pass = .true.
             j = i + 1
-!            print *, "pass"
             exit
         end if
     end do
