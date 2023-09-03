@@ -11,8 +11,8 @@ on:
 
 jobs:
 
-  basic:
-    name: Linux/macOS (${{ matrix.os }})
+  gfortran:
+    name: GFortran (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -39,3 +39,32 @@ jobs:
         shell: bash -l {0}
         run: |
             ci/build.sh
+
+  lfortran:
+    name: LFortran (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["macos-latest", "ubuntu-latest"]
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - uses: mamba-org/provision-with-micromamba@main
+        with:
+          environment-file: environment.yml
+          extra-specs: |
+            sel(osx): lfortran=0.20.0
+
+      - uses: hendrikmuhs/ccache-action@main
+        with:
+          variant: sccache
+          key: ${{ github.job }}-${{ matrix.os }}
+
+      - name: Build and run
+        shell: bash -l {0}
+        run: |
+            ci/build_lfortran.sh
