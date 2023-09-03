@@ -122,13 +122,11 @@ function merge_utf8_pairs(intokens) result(tokens)
 ! Merge all UTF-8 character pairs
 type(string), intent(in) :: intokens(:)
 type(string), allocatable :: tokens(:)
-integer :: i, j, ic
+integer :: i, j
 logical :: one_more_pass
 allocate(tokens(size(intokens)))
 tokens = intokens
 one_more_pass = .true.
-!print *, "merge_utf8_pairs:", size(tokens)
-!print *, "tokens = ", (tokens(i)%s // " ", i=1,size(tokens))
 j = 1
 do while(one_more_pass)
     one_more_pass = .false.
