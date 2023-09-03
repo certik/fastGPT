@@ -112,11 +112,9 @@ function merge_pair(intokens, idx) result(tokens)
 type(string), intent(in) :: intokens(:)
 integer, intent(in) :: idx
 type(string), allocatable :: tokens(:)
-type(string) :: merged_token
-merged_token%s = intokens(idx)%s // intokens(idx+1)%s
 allocate(tokens(size(intokens)-1))
 tokens(:idx-1) = intokens(:idx-1)
-tokens(idx) = merged_token
+tokens(idx)%s = intokens(idx)%s // intokens(idx+1)%s
 tokens(idx+1:) = intokens(idx+2:)
 end function
 
