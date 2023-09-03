@@ -46,7 +46,7 @@ end function
 
 elemental real(sp) function gelu(x) result(y)
 real(sp), intent(in) :: x
-y = 0.5_sp * x * (1 + tanh(sqrt(2 / pi) * (x + 0.044715_sp * x**3)))
+y = 0.5_sp * x * (1 + fast_tanh(sqrt(2 / pi) * (x + 0.044715_sp * x**3)))
 end function
 
 function softmax(x) result(y)
@@ -93,9 +93,16 @@ end function
 function ffn(x, fc_w, fc_b, proj_w, proj_b) result(y)
 real(sp), intent(in) :: x(:,:), fc_w(:,:), fc_b(:), proj_w(:,:), proj_b(:)
 real(sp) :: y(size(x,1),size(x,2))
-!real(sp) :: a(4*size(x,1),size(x,2))
-!a = gelu(linear(x, fc_w, fc_b))
-y = linear(gelu(linear(x, fc_w, fc_b)), proj_w, proj_b)
+real(sp) :: a(4*size(x,1),size(x,2))
+integer :: i, j
+!a = linear(x, fc_w, fc_b)
+call matmul_2d(fc_w, x, a)
+do j = 1, size(a,1)
+do i = 1, size(a,2)
+    a(j,i) = gelu(a(j,i) + fc_b(j))
+end do
+end do
+y = linear(a, proj_w, proj_b)
 end function
 
 function attention(n_embd_head,n_seq,n_seq_x, q, k, v, mask) result(y)
