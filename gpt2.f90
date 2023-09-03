@@ -256,7 +256,7 @@ integer :: n_seq2, n_seq_x
 integer :: next_id
 integer :: input2(size(input)+n_tokens_to_generate)
 logical :: use_kv_cache
-real(sp) :: kv_cache(m%n_embd,n_seq+n_tokens_to_generate,2,m%n_layer)
+real(sp), allocatable :: kv_cache(:,:,:,:)
 real(sp), allocatable :: kv_cache2(:,:,:,:)
 character(:), allocatable :: output_txt, last_token
 if (present(stop_text)) then
@@ -264,6 +264,7 @@ if (present(stop_text)) then
     output_txt = ""
 end if
 input2(:n_seq) = input
+allocate(kv_cache(m%n_embd,n_seq+n_tokens_to_generate,2,m%n_layer))
 do i = 1, n_tokens_to_generate
     if (use_cache) then
         use_kv_cache = (i > 1) ! Use cache for subsequent tokens
@@ -302,6 +303,7 @@ do i = 1, n_tokens_to_generate
     end if
     deallocate(logits)
 end do
+deallocate(kv_cache)
 allocate(output(n_seq2 - n_seq + 1))
 output(:) = input2(n_seq+1:n_seq2+1)
 end subroutine
