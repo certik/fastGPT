@@ -17,18 +17,9 @@ character(:), allocatable, intent(out) :: input_txt
 integer, intent(out) :: n_tokens_to_generate
 character(1024) :: input_txt2
 integer :: u, ios
-namelist / input_fastGPT / n_tokens_to_generate
 allocate(character(0) :: input_txt)
-input_txt = ""
-open(newunit=u, file=filename, status="old")
-read(u, input_fastGPT)
-do
-    read(u, "(a)", iostat=ios) input_txt2
-    if (ios /= 0) exit
-    if (len(input_txt) > 0) input_txt = input_txt // char(10)
-    input_txt = input_txt // trim(input_txt2)
-end do
-close(u)
+n_tokens_to_generate = 20
+input_txt = "Alan Turing theorized that computers would one day become very powerful, but even he could not imagine"
 end subroutine
 
 subroutine load_model(filename, m)
