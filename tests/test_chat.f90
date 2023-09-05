@@ -3,6 +3,7 @@ use driver, only: chat
 use tokenizer, only: string
 implicit none
 type(string), allocatable :: inputs(:)
+allocate(inputs(14))
 inputs = [ &
     string("What color does the sky have?"), &
     string("What can you type a document on?"), &
@@ -19,5 +20,5 @@ inputs = [ &
     string("What color is snow?"), &
     string("What color do plants usually have?") &
     ]
-call chat(.true., inputs(:3))
+call chat(.true., inputs(:2))
 end program
