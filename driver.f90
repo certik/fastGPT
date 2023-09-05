@@ -154,7 +154,7 @@ if (input_txt /= output_txt) then
     error stop "The decoded input text does not agree with the input text"
 end if
 
-print "(a)", "Running model..."
+print "(a)", "Running model...."
 call cpu_time(t1)
 t1o = omp_get_wtime()
 use_cache = .true.
