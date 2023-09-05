@@ -221,8 +221,7 @@ else
 end if
 end function
 
-subroutine chat(present_inputs, inputs)
-logical, intent(in) :: present_inputs
+subroutine chat(inputs)
 type(string), optional, intent(in) :: inputs(:)
 type(model_t) :: m
 character(:), allocatable :: prompt, input, output
@@ -236,14 +235,14 @@ prompt = "Your name is fastGPT and you are an AI bot. The user will ask you &
 &fastGPT: Four." // LF // "&
 &User:"
 write(*,"(a)",advance="no") prompt
-if (present_inputs) then
+if (present(inputs)) then
     n_prompts = size(inputs)
 else
     n_prompts = 1024
 end if
 do i = 1, n_prompts
     write(*,"(a)",advance="no")  " "
-    if (present_inputs) then
+    if (present(inputs)) then
         input = inputs(i)%s
         write(*,"(a)") input
     else
