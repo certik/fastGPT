@@ -92,9 +92,10 @@ end function
 
 function ffn(x, fc_w, fc_b, proj_w, proj_b) result(y)
 real(sp), intent(in) :: x(:,:), fc_w(:,:), fc_b(:), proj_w(:,:), proj_b(:)
-real(sp) :: y(size(x,1),size(x,2))
+real(sp), allocatable :: y(:,:)
 !real(sp) :: a(4*size(x,1),size(x,2))
 !a = gelu(linear(x, fc_w, fc_b))
+allocate(y(size(x,1),size(x,2)))
 y = linear(gelu(linear(x, fc_w, fc_b)), proj_w, proj_b)
 end function
 
