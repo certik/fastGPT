@@ -389,22 +389,24 @@ def check_model_metadata(mo):
 def tokenize_word(input_ : str, i : int) -> tuple[str, int]:
     result = ('', i)
     i0 : int = i
-    if input_ == ' ':  # only one leading space ?
+    if len(input_) >= 1 and input_[i0] == ' ':
         i += 1
-    while True:
+    while i < len(input_):
         ci: str = input_[i]
-        if i >= len(input_) or ci == ' ' or ci == '.' or ci == ',':
+        if ci == ' ' or ci == '.' or ci == ',':
             result = (input_[i0:i], i)
             return result
         i += 1
+    result = (input_[i0:i], i)
+    return result
 
 
 def next_token(input_ : str, i : int) -> tuple[str, int]:
     result = ('', i)
-    ci : str = input_[i]
     if i >= len(input_):
         return result
-    elif ci == ' ':
+    ci : str = input_[i]
+    if ci == ' ':
         result = tokenize_word(input_, i)
     elif ci == ',' or ci == '.':
         i += 1
@@ -499,6 +501,8 @@ def encode(m : Model, input_ : str, byte_decoder : np.ndarray) -> np.ndarray:
     while True:
         tmp : str
         tmp, i = next_token(input_, i)
+        if len(tmp) == 0:
+            break
         t : str
         for t in tmp:
             c : int = ord(t)
