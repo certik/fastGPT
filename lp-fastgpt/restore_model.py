@@ -415,19 +415,34 @@ def next_token(input_ : str, i : int) -> tuple[str, int]:
         result = tokenize_word(input_, i)
     return result
 
-def merge_pair(intokens : bytearray, idx : int) -> bytearray:
-    tokens       : bytearray
-    merged_token : bytearray = bytearray(2)
+def merge_pair(intokens : list[str], idx : int) -> list[str]:
+    tokens       : list[str]
+    merged_token : str
     i: int
-    merged_token[0] = intokens[idx]
-    merged_token[1] = intokens[idx + 1]
-    tokens = intokens[:idx].copy()
+    merged_token = intokens[idx] + intokens[idx + 1]
+    tokens = intokens[:len(intokens)-1].copy()
     tokens[idx] = merged_token
     for i in range(idx+2, len(intokens)):
         tokens[i-1] = intokens[i]
     return tokens
 
 
+
+#     one_more_pass = .true.
+#     j = 1
+#     do while(one_more_pass)
+#         one_more_pass = .false.
+#         do i = j, size(tokens)-1
+#             if (len(tokens(i)%s) == 1 .and. iachar(tokens(i)%s(1:1)) >= 128) then
+#                 tokens = merge_pair(tokens, i)
+#                 one_more_pass = .true.
+#                 j = i + 1
+#                 exit
+#             end if
+#         end do
+#     end do
+#     !print *, "tokens = ", (tokens(i)%s // " ", i=1,size(tokens))
+#     end function
 def merge_utf8_pairs(token : str) -> str:
     tokens        : bytearray
     i             : int
@@ -435,19 +450,18 @@ def merge_utf8_pairs(token : str) -> str:
     ic            : int
     one_more_pass : bool = True
 
-    tokens = bytearray(token.encode("utf-8"))
+    tokens = list(token)
     j = 0
     while one_more_pass:
         one_more_pass = False
         for i in range(j, len(tokens)):
-            ic : int = tokens[i]
-            if ic < 0:
-                ic += 256
-            if ic >= 128:
-                tokens = merge_pair(tokens, i)
-                one_more_pass = True
-                j = i + 1
-    return tokens.decode("utf-8")
+            if len(token[i]) == 1:
+                ic : int = ord(tokens[i][0])
+                if ic >= 128:
+                    tokens = merge_pair(tokens, i)
+                    one_more_pass = True
+                    j = i + 1
+    return tokens
 
 def c2s(x: np.ndarray) -> str:
     y = ''
@@ -461,9 +475,8 @@ def word_idx(word: str, idx: np.ndarray, decoder_txt: str) -> int:
             return i
     return -1
 
-def bpe(m : Model, token : str) -> str:
+def bpe(m : Model, token : str) -> list[str]:
     tokens         : str =  ''
-    pair_scores    : list =  []
     not_found      : int =  0
     merge_pair_idx : int =  0
     i              : int =  0
@@ -472,8 +485,9 @@ def bpe(m : Model, token : str) -> str:
 
     not_found = len(m.vocab_idx) + MAGIC
     tokens = merge_utf8_pairs(token)
-
+    # pair_scores => size of tokens-1
     while len(tokens) > 1:
+        pair_scores    : list =  []
         for i in range(0, len(tokens) - 1):
             x = word_idx(tokens[i] + " " + tokens[i + 1], m.vocab_idx, m.vocab_txt)
             if x != -1:
