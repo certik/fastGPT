@@ -452,10 +452,10 @@ def merge_utf8_pairs(token : str) -> str:
 
     tokens = list(token)
     j = 0
-    while one_more_pass:
+    while one_more_pass and j<len(tokens):
         one_more_pass = False
         for i in range(j, len(tokens)):
-            if len(token[i]) == 1:
+            if len(tokens[i]) == 1:
                 ic : int = ord(tokens[i][0])
                 if ic >= 128:
                     tokens = merge_pair(tokens, i)
@@ -463,7 +463,7 @@ def merge_utf8_pairs(token : str) -> str:
                     j = i + 1
     return tokens
 
-def c2s(x: np.ndarray) -> str:
+def c2s(x: str) -> str:
     y = ''
     for i in range(len(x)):
         y += chr(x[i])
@@ -471,7 +471,7 @@ def c2s(x: np.ndarray) -> str:
 
 def word_idx(word: str, idx: np.ndarray, decoder_txt: str) -> int:
     for i in range(len(idx) - 1):
-        if c2s(decoder_txt[idx[i]:idx[i + 1]]) == word:
+        if decoder_txt[idx[i]:idx[i + 1]] == word:
             return i
     return -1
 
@@ -502,6 +502,15 @@ def bpe(m : Model, token : str) -> list[str]:
         tokens = merge_pair(tokens, merge_pair_idx)
     return tokens
 
+def codepoint_to_utf8(s: str, c: int) -> str:
+    if c < 128:
+        return s + chr(c)
+    elif c < 2048:
+        d1: int = ((c>>6)|192)
+        d2:int = ((c|128)&191)
+        return s + chr(d1) + chr(d2)
+    else:
+        raise Exception("Error in codepoint_to_utf8")
 
 def encode(m : Model, input_ : str, byte_decoder : np.ndarray) -> np.ndarray:
     """Compare to the fortran function in tokenizer.f90."""
@@ -509,6 +518,7 @@ def encode(m : Model, input_ : str, byte_decoder : np.ndarray) -> np.ndarray:
     tokens2  : np.ndarray = np.zeros(MaxTokens, dtype=np.int32)
     n_tokens : int        = 0
     i        : int        = 0  # fortran counts from 1
+    j : int = 0
     # Python does not have \p for punctuation.
     # rex = re.compile(r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""")
     # rex.match(input_)
@@ -518,13 +528,18 @@ def encode(m : Model, input_ : str, byte_decoder : np.ndarray) -> np.ndarray:
         if len(tmp) == 0:
             break
         t : str
+        tmp2: str = ""
         for t in tmp:
             c : int = ord(t)
-            e = m.byte_encoder[c]
-            tmp2 : bytes = t.encode("utf-8")
-            tmp3 : int = ord(tmp2)
-        if tmp == '':
-            continue
+            c = m.byte_encoder[c]
+            tmp2 = codepoint_to_utf8(tmp2, c)
+        bpe_tokens: list[str] = bpe(m, tmp2)
+        for j in range(len(bpe_tokens)):
+            n_tokens = n_tokens + 1
+            if (n_tokens > MaxTokens):
+                raise Exception("Error in encode")
+            ###### Check word idx's m.vocab_idx
+            tokens2[n_tokens] = word_idx(bpe_tokens[j], m.vocab_idx, m.decoder_txt)
     return tokens2
 
 
@@ -540,6 +555,7 @@ def gpt2_driver(m : Model, input_ : str) -> str:
     # check against fortran:
     # print(f'byte_decoder = \n{byte_decoder}')
     encoded : np.ndarray = encode(m, input_, byte_decoder)
+    print(encoded)
     result = ''
     return result
 
