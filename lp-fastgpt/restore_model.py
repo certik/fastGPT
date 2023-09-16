@@ -454,13 +454,18 @@ def merge_utf8_pairs(token : str) -> str:
     j = 0
     while one_more_pass and j<len(tokens):
         one_more_pass = False
-        for i in range(j, len(tokens)):
-            if len(tokens[i]) == 1:
-                ic : int = ord(tokens[i][0])
-                if ic >= 128:
-                    tokens = merge_pair(tokens, i)
-                    one_more_pass = True
-                    j = i + 1
+        ## the error is that tokens keep changing -- so does len
+        i = j
+        while i < len(tokens):
+        # for i in range(j, len(tokens)):
+            if len(tokens[i]) == 1 and ord(tokens[i][0])>=128:
+                # ic : int =
+                # if ic >= 128:
+                tokens = merge_pair(tokens, i)
+                one_more_pass = True
+                j = i + 1
+            i += 1
+
     return tokens
 
 def c2s(x: str) -> str:
@@ -502,6 +507,32 @@ def bpe(m : Model, token : str) -> list[str]:
         tokens = merge_pair(tokens, merge_pair_idx)
     return tokens
 
+# function utf8_to_codepoint(s, i) result(c)
+#     ! UTF-8 -> UTF-32
+#     character(*), intent(in) :: s
+#     integer, intent(inout) :: i
+#     integer :: c, d
+#     c = iachar(s(i:i))
+#     if (c >= 128) then
+#         i = i + 1
+#         d = iachar(s(i:i))
+#         c = ior(ishft(iand(c, 31), 6), iand(d, 63))
+#     end if
+#     if (c >= 2048) then
+#         error stop "UTF-8 range not supported"
+#     end if
+#     end function
+
+def utf8_to_codepoint(s: str, i: int) -> tuple[int, int]:
+    c = ord(s[i])
+    if c >= 128:
+        i += 1
+        d = ord(128)
+        c = (((c&31)<<6)|(d&63))
+    if c >= 2048:
+        raise Exception("error in utf8 to codepoint")
+    return (c, i)
+
 def codepoint_to_utf8(s: str, c: int) -> str:
     if c < 128:
         return s + chr(c)
@@ -538,10 +569,26 @@ def encode(m : Model, input_ : str, byte_decoder : np.ndarray) -> np.ndarray:
             n_tokens = n_tokens + 1
             if (n_tokens > MaxTokens):
                 raise Exception("Error in encode")
-            ###### Check word idx's m.vocab_idx
-            tokens2[n_tokens] = word_idx(bpe_tokens[j], m.vocab_idx, m.decoder_txt)
+            tokens2[n_tokens] = word_idx(bpe_tokens[j], m.decoder_idx, m.decoder_txt)
     return tokens2
 
+def decode(tokens, idx, decoder_txt, byte_decoder) -> str:
+    output2: str = ""
+    output: str = ""
+    i: int
+    for i in range(len(tokens)):
+        if tokens[i] < 0:
+            raise Exception("less than 0")
+        output2 += decoder_txt[idx[tokens[i]]:idx[tokens[i]+1]]
+    i = 0
+    while i < len(output2):
+        c, i = utf8_to_codepoint(output2, i)
+        if c < 0 or c > len(byte_decoder):
+            raise Exception("Codepoint out of range for byte decoder")
+        tmp:str = chr(byte_decoder[c])
+        output+= tmp
+        i = i + 1
+    return output
 
 def gpt2_driver(m : Model, input_ : str) -> str:
     print(f"Input to the model =\n{input_}")
@@ -551,12 +598,12 @@ def gpt2_driver(m : Model, input_ : str) -> str:
     byte_decoder : np.ndarray = \
         np.zeros((byte_encoder_max + 1,), dtype=np.int32)
     for i, e in enumerate(m.byte_encoder):
-        byte_decoder[e] = i
+        byte_decoder[m.byte_encoder[i]] = i
     # check against fortran:
     # print(f'byte_decoder = \n{byte_decoder}')
     encoded : np.ndarray = encode(m, input_, byte_decoder)
     print(encoded)
-    result = ''
+    result: str = decode(encoded, m.decoder_idx, m.decoder_txt, byte_decoder)
     return result
 
 
@@ -568,7 +615,7 @@ def main() -> Model:
     input : str = """Alan Turing theorized that computers would one day become very powerful, but even he could not imagine"""
     with Timer(text="Ran the model in {:0.6f} seconds."):
         result : str = gpt2_driver(m, input)
-
+        print(result)
     return m
 
 
