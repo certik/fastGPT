@@ -415,73 +415,42 @@ def next_token(input_ : str, i : int) -> tuple[str, int]:
         result = tokenize_word(input_, i)
     return result
 
-def merge_pair(intokens : list[str], idx : int) -> list[str]:
-    tokens       : list[str]
-    merged_token : str
+def merge_pair(intokens : list[bytearray], idx : int) -> list[bytearray]:
+    tokens       : list[bytearray]
     i: int
-    merged_token = intokens[idx] + intokens[idx + 1]
     tokens = intokens[:len(intokens)-1].copy()
-    tokens[idx] = merged_token
+    tokens[idx] = (intokens[idx].decode("utf-8") + intokens[idx + 1].decode("utf-8")).encode("utf-8")
     for i in range(idx+2, len(intokens)):
         tokens[i-1] = intokens[i]
     return tokens
 
 
-
-#     one_more_pass = .true.
-#     j = 1
-#     do while(one_more_pass)
-#         one_more_pass = .false.
-#         do i = j, size(tokens)-1
-#             if (len(tokens(i)%s) == 1 .and. iachar(tokens(i)%s(1:1)) >= 128) then
-#                 tokens = merge_pair(tokens, i)
-#                 one_more_pass = .true.
-#                 j = i + 1
-#                 exit
-#             end if
-#         end do
-#     end do
-#     !print *, "tokens = ", (tokens(i)%s // " ", i=1,size(tokens))
-#     end function
-def merge_utf8_pairs(token : str) -> str:
-    tokens        : bytearray
+def merge_utf8_pairs(tokens : list[bytearray]) -> list[bytearray]:
     i             : int
     j             : int
-    ic            : int
     one_more_pass : bool = True
 
-    tokens = list(token)
     j = 0
     while one_more_pass and j<len(tokens):
         one_more_pass = False
-        ## the error is that tokens keep changing -- so does len
         i = j
         while i < len(tokens):
-        # for i in range(j, len(tokens)):
-            if len(tokens[i]) == 1 and ord(tokens[i][0])>=128:
-                # ic : int =
-                # if ic >= 128:
+            if len(tokens[i]) == 1 and tokens[i][0]>=128:
                 tokens = merge_pair(tokens, i)
                 one_more_pass = True
                 j = i + 1
             i += 1
-
     return tokens
 
-def c2s(x: str) -> str:
-    y = ''
-    for i in range(len(x)):
-        y += chr(x[i])
-    return y
 
 def word_idx(word: str, idx: np.ndarray, decoder_txt: str) -> int:
     for i in range(len(idx) - 1):
-        if decoder_txt[idx[i]:idx[i + 1]] == word:
+        if decoder_txt[idx[i]:idx[i + 1]].decode("utf-8") == word:
             return i
     return -1
 
-def bpe(m : Model, token : str) -> list[str]:
-    tokens         : str =  ''
+def bpe(m : Model, token : str) -> list[bytearray]:
+    tokens         : list[bytearray] = []
     not_found      : int =  0
     merge_pair_idx : int =  0
     i              : int =  0
@@ -489,12 +458,15 @@ def bpe(m : Model, token : str) -> list[str]:
     x              : int
 
     not_found = len(m.vocab_idx) + MAGIC
-    tokens = merge_utf8_pairs(token)
+    for t in token:
+        tokens.append(t.encode("utf-8"))
+    tokens = merge_utf8_pairs(tokens)
     # pair_scores => size of tokens-1
+    vocab_txt = m.vocab_txt.encode("utf-8")
     while len(tokens) > 1:
         pair_scores    : list =  []
         for i in range(0, len(tokens) - 1):
-            x = word_idx(tokens[i] + " " + tokens[i + 1], m.vocab_idx, m.vocab_txt)
+            x = word_idx(tokens[i].decode("utf-8") + " " + tokens[i + 1].decode("utf-8"), m.vocab_idx, vocab_txt)
             if x != -1:
                 pair_scores.append(x)
             else:
@@ -507,31 +479,17 @@ def bpe(m : Model, token : str) -> list[str]:
         tokens = merge_pair(tokens, merge_pair_idx)
     return tokens
 
-# function utf8_to_codepoint(s, i) result(c)
-#     ! UTF-8 -> UTF-32
-#     character(*), intent(in) :: s
-#     integer, intent(inout) :: i
-#     integer :: c, d
-#     c = iachar(s(i:i))
-#     if (c >= 128) then
-#         i = i + 1
-#         d = iachar(s(i:i))
-#         c = ior(ishft(iand(c, 31), 6), iand(d, 63))
-#     end if
-#     if (c >= 2048) then
-#         error stop "UTF-8 range not supported"
-#     end if
-#     end function
 
 def utf8_to_codepoint(s: str, i: int) -> tuple[int, int]:
     c = ord(s[i])
     if c >= 128:
         i += 1
-        d = ord(128)
+        d = ord(s[i])
         c = (((c&31)<<6)|(d&63))
     if c >= 2048:
         raise Exception("error in utf8 to codepoint")
     return (c, i)
+
 
 def codepoint_to_utf8(s: str, c: int) -> str:
     if c < 128:
@@ -553,6 +511,7 @@ def encode(m : Model, input_ : str, byte_decoder : np.ndarray) -> np.ndarray:
     # Python does not have \p for punctuation.
     # rex = re.compile(r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""")
     # rex.match(input_)
+    decoder_txt = m.decoder_txt.encode("utf-8")
     while True:
         tmp : str
         tmp, i = next_token(input_, i)
@@ -563,14 +522,14 @@ def encode(m : Model, input_ : str, byte_decoder : np.ndarray) -> np.ndarray:
         for t in tmp:
             c : int = ord(t)
             c = m.byte_encoder[c]
-            tmp2 = codepoint_to_utf8(tmp2, c)
-        bpe_tokens: list[str] = bpe(m, tmp2)
+            tmp2 += chr(c)
+        bpe_tokens: list[bytearray] = bpe(m, tmp2)
         for j in range(len(bpe_tokens)):
             n_tokens = n_tokens + 1
             if (n_tokens > MaxTokens):
                 raise Exception("Error in encode")
-            tokens2[n_tokens] = word_idx(bpe_tokens[j], m.decoder_idx, m.decoder_txt)
-    return tokens2
+            tokens2[n_tokens-1] = word_idx(bpe_tokens[j].decode("utf-8"), m.decoder_idx, decoder_txt)
+    return tokens2[:n_tokens]
 
 def decode(tokens, idx, decoder_txt, byte_decoder) -> str:
     output2: str = ""
@@ -579,14 +538,14 @@ def decode(tokens, idx, decoder_txt, byte_decoder) -> str:
     for i in range(len(tokens)):
         if tokens[i] < 0:
             raise Exception("less than 0")
-        output2 += decoder_txt[idx[tokens[i]]:idx[tokens[i]+1]]
+        output2 += decoder_txt[idx[tokens[i]]:idx[tokens[i]+1]].decode("utf-8")
     i = 0
     while i < len(output2):
-        c, i = utf8_to_codepoint(output2, i)
+        c = ord(output2[i])
         if c < 0 or c > len(byte_decoder):
             raise Exception("Codepoint out of range for byte decoder")
         tmp:str = chr(byte_decoder[c])
-        output+= tmp
+        output += tmp
         i = i + 1
     return output
 
@@ -599,11 +558,11 @@ def gpt2_driver(m : Model, input_ : str) -> str:
         np.zeros((byte_encoder_max + 1,), dtype=np.int32)
     for i, e in enumerate(m.byte_encoder):
         byte_decoder[m.byte_encoder[i]] = i
-    # check against fortran:
-    # print(f'byte_decoder = \n{byte_decoder}')
     encoded : np.ndarray = encode(m, input_, byte_decoder)
-    print(encoded)
-    result: str = decode(encoded, m.decoder_idx, m.decoder_txt, byte_decoder)
+    print("Input tokens:\n", list(encoded))
+    decoder_txt = m.decoder_txt.encode("utf-8")
+    result: str = decode(encoded, m.decoder_idx, decoder_txt, byte_decoder)
+    assert result == input_, "Encoder-Decoder failed"
     return result
 
 
