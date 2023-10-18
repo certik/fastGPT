@@ -92,6 +92,7 @@ target_link_libraries(test_more_inputs fastgpt)
 add_test(test_more_inputs ${PROJECT_BINARY_DIR}/test_more_inputs)
 
 add_executable(test_chat tests/test_chat.f90)
+target_compile_options(test_chat PRIVATE --realloc-lhs)
 target_link_libraries(test_chat fastgpt)
 add_test(test_chat ${PROJECT_BINARY_DIR}/test_chat)
 
