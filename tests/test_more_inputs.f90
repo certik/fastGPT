@@ -9,7 +9,7 @@ integer, parameter :: output_ref(*) = [1248, 5332, 287, 262, 7404, 286, &
     25370, 254, 368, 83, 6557, 81, 11]
 integer, allocatable :: input(:), output(:)
 
-call load_model("model.dat", m)
+call load_model("model.gguf", m)
 
 call gpt2_driver2("Ondřej Čertík was born in", 13, m, input, output)
 print *
