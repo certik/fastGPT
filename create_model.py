@@ -39,6 +39,7 @@ import re
 from shutil import copyfile
 
 import numpy as np
+import gguf
 import requests
 import tensorflow as tf
 from tqdm import tqdm
@@ -159,10 +160,11 @@ def convert(params, n_head, n_ctx, idx, decoder_txt,
     model_version = 1
 
     # Save the model
-    f = open("model.dat", "w")
-    np.array([model_type, model_version, n_vocab, n_ctx, n_embd, n_layer, n_head,
+    f = open("model2.dat", "w")
+    header = np.array([model_type, model_version, n_vocab, n_ctx, n_embd, n_layer, n_head,
         len(idx),len(decoder_txt.encode("utf-8")),
-        len(vocab_idx),len(vocab_txt.encode("utf-8")),len(byte_decoder)], dtype=np.int32).tofile(f)
+        len(vocab_idx),len(vocab_txt.encode("utf-8")),len(byte_decoder)], dtype=np.int32)
+    header.tofile(f)
     wte.tofile(f); wpe.tofile(f)
     mlp_fc_w.tofile(f); mlp_fc_b.tofile(f)
     mlp_proj_w.tofile(f); mlp_proj_b.tofile(f)
@@ -179,6 +181,31 @@ def convert(params, n_head, n_ctx, idx, decoder_txt,
 
     t2 = clock()
     print("Save time: ", t2-t1)
+
+    # Save to GGUF
+    g = gguf.GGUFWriter("model.gguf", "gpt2")
+    g.add_tensor("header", header)
+    g.add_tensor("wte", wte); g.add_tensor("wpe", wpe)
+    g.add_tensor("mlp_fc_w", mlp_fc_w); g.add_tensor("mlp_fc_b", mlp_fc_b)
+    g.add_tensor("mlp_proj_w", mlp_proj_w); g.add_tensor("mlp_proj_b", mlp_proj_b)
+    g.add_tensor("attn_w", attn_w); g.add_tensor("attn_b", attn_b)
+    g.add_tensor("attn_proj_w", attn_proj_w); g.add_tensor("attn_proj_b",
+            attn_proj_b)
+    g.add_tensor("ln1_b", ln1_b); g.add_tensor("ln1_g", ln1_g)
+    g.add_tensor("ln2_b", ln2_b); g.add_tensor("ln2_g", ln2_g)
+    g.add_tensor("lnf_b", lnf_b); g.add_tensor("lnf_g", lnf_g)
+    g.add_tensor("idx", idx)
+    g.add_tensor("decoder_txt", np.frombuffer(decoder_txt.encode("utf-8"),
+        dtype=np.int8))
+    g.add_tensor("vocab_idx", vocab_idx)
+    g.add_tensor("vocab_txt", np.frombuffer(vocab_txt.encode("utf-8"),
+        dtype=np.int8))
+    g.add_tensor("byte_decoder", byte_decoder)
+    g.write_header_to_file()
+    g.write_kv_data_to_file()
+    g.write_tensors_to_file()
+    g.close()
+
 
 def load_decoder(filename):
     D = json.load(open(filename))
