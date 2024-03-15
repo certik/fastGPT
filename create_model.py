@@ -158,31 +158,11 @@ def convert(params, n_head, n_ctx, idx, decoder_txt,
 
     model_type = 0xfa51697 # fastGPT
     model_version = 1
-
-    # Save the model
-    f = open("model2.dat", "w")
     header = np.array([model_type, model_version, n_vocab, n_ctx, n_embd, n_layer, n_head,
         len(idx),len(decoder_txt.encode("utf-8")),
         len(vocab_idx),len(vocab_txt.encode("utf-8")),len(byte_decoder)], dtype=np.int32)
-    header.tofile(f)
-    wte.tofile(f); wpe.tofile(f)
-    mlp_fc_w.tofile(f); mlp_fc_b.tofile(f)
-    mlp_proj_w.tofile(f); mlp_proj_b.tofile(f)
-    attn_w.tofile(f); attn_b.tofile(f)
-    attn_proj_w.tofile(f); attn_proj_b.tofile(f)
-    ln1_b.tofile(f); ln1_g.tofile(f)
-    ln2_b.tofile(f); ln2_g.tofile(f)
-    lnf_b.tofile(f); lnf_g.tofile(f)
-    idx.tofile(f)
-    f.write(decoder_txt)
-    vocab_idx.tofile(f)
-    f.write(vocab_txt)
-    byte_decoder.tofile(f)
 
-    t2 = clock()
-    print("Save time: ", t2-t1)
-
-    # Save to GGUF
+    # Save the model to GGUF
     g = gguf.GGUFWriter("model.gguf", None)
     g.add_tensor("header", header)
     g.add_tensor("wte", wte); g.add_tensor("wpe", wpe)
@@ -205,6 +185,9 @@ def convert(params, n_head, n_ctx, idx, decoder_txt,
     g.write_kv_data_to_file()
     g.write_tensors_to_file()
     g.close()
+
+    t2 = clock()
+    print("Save time: ", t2-t1)
 
 
 def load_decoder(filename):
