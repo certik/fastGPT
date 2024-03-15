@@ -17,7 +17,7 @@ time OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 ./gpt2
 
 rm model.gguf
 curl -o model.dat -L https://huggingface.co/datasets/certik/fastGPT/resolve/main/model_fastgpt_124M_v1.dat
-time OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 ./gpt2
+#time OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 ./gpt2
 
 rm gpt2
 python pt.py
