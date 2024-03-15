@@ -163,28 +163,45 @@ def convert(params, n_head, n_ctx, idx, decoder_txt,
         len(vocab_idx),len(vocab_txt.encode("utf-8")),len(byte_decoder)], dtype=np.int32)
 
     # Save the model to GGUF
-    g = gguf.GGUFWriter("model.gguf", None)
-    g.add_tensor("header", header)
-    g.add_tensor("wte", wte); g.add_tensor("wpe", wpe)
-    g.add_tensor("mlp_fc_w", mlp_fc_w); g.add_tensor("mlp_fc_b", mlp_fc_b)
-    g.add_tensor("mlp_proj_w", mlp_proj_w); g.add_tensor("mlp_proj_b", mlp_proj_b)
-    g.add_tensor("attn_w", attn_w); g.add_tensor("attn_b", attn_b)
-    g.add_tensor("attn_proj_w", attn_proj_w); g.add_tensor("attn_proj_b",
-            attn_proj_b)
-    g.add_tensor("ln1_b", ln1_b); g.add_tensor("ln1_g", ln1_g)
-    g.add_tensor("ln2_b", ln2_b); g.add_tensor("ln2_g", ln2_g)
-    g.add_tensor("lnf_b", lnf_b); g.add_tensor("lnf_g", lnf_g)
-    g.add_tensor("idx", idx)
-    g.add_tensor("decoder_txt", np.frombuffer(decoder_txt.encode("utf-8"),
-        dtype=np.int8))
-    g.add_tensor("vocab_idx", vocab_idx)
-    g.add_tensor("vocab_txt", np.frombuffer(vocab_txt.encode("utf-8"),
-        dtype=np.int8))
-    g.add_tensor("byte_decoder", byte_decoder)
-    g.write_header_to_file()
-    g.write_kv_data_to_file()
-    g.write_tensors_to_file()
-    g.close()
+    def save_gguf(data_offset_name, data_offset_value):
+        g = gguf.GGUFWriter("model.gguf", None)
+        g.add_int32(data_offset_name, data_offset_value)
+        g.add_tensor("header", header)
+        g.add_tensor("wte", wte); g.add_tensor("wpe", wpe)
+        g.add_tensor("mlp_fc_w", mlp_fc_w); g.add_tensor("mlp_fc_b", mlp_fc_b)
+        g.add_tensor("mlp_proj_w", mlp_proj_w); g.add_tensor("mlp_proj_b", mlp_proj_b)
+        g.add_tensor("attn_w", attn_w); g.add_tensor("attn_b", attn_b)
+        g.add_tensor("attn_proj_w", attn_proj_w); g.add_tensor("attn_proj_b",
+                attn_proj_b)
+        g.add_tensor("ln1_b", ln1_b); g.add_tensor("ln1_g", ln1_g)
+        g.add_tensor("ln2_b", ln2_b); g.add_tensor("ln2_g", ln2_g)
+        g.add_tensor("lnf_b", lnf_b); g.add_tensor("lnf_g", lnf_g)
+        g.add_tensor("idx", idx)
+        g.add_tensor("decoder_txt", np.frombuffer(decoder_txt.encode("utf-8"),
+            dtype=np.int8))
+        g.add_tensor("vocab_idx", vocab_idx)
+        g.add_tensor("vocab_txt", np.frombuffer(vocab_txt.encode("utf-8"),
+            dtype=np.int8))
+        g.add_tensor("byte_decoder", byte_decoder)
+        g.write_header_to_file()
+        g.write_kv_data_to_file()
+        g.write_tensors_to_file()
+        g.close()
+
+    data_offset_name = "general.data_offset"
+    save_gguf(data_offset_name, 0)
+
+    g = gguf.GGUFReader("model.gguf")
+    data_offset = g.tensors[0].data_offset
+    # * .offset: the offset of the kv entry
+    # * 8: The i64 length of the key string
+    # * 4: The i32 type of the value
+    offset_offset = g.fields[data_offset_name].offset + 8 + \
+        len(data_offset_name) + 4
+    print("offset offset:", offset_offset)
+    print("data offset:", data_offset)
+
+    save_gguf(data_offset_name, data_offset)
 
     t2 = clock()
     print("Save time: ", t2-t1)

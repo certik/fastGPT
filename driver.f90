@@ -58,14 +58,27 @@ type(model_t), intent(out) :: m
 ! We use the following fastGPT model type number
 !   fastGPT (digits look similar to the letters they represent)
 ! 0xfa51697 = 262477463
+
+! We read the offset to the data section at this position, which is the first
+! variable in the metadata, the name is "general.data_offset", type i32.
+integer, parameter :: offset_offset = &
+    ! header
+    4 + & ! u8[4] magic
+    4 + & ! u32 version
+    8 + & ! u64 n_arrays
+    8 + & ! u64 n_kv
+    ! kv
+    8 + & ! u64 n_str
+    19 + & ! len("general.data_offset")
+    4 ! u32 type of value
 integer, parameter :: current_model_mark = 262477463
 integer, parameter :: current_model_version = 1
 integer :: model_mark
 integer :: u
 integer :: data_offset
 open(newunit=u, file=filename, form="unformatted", access="stream", status="old")
-! TODO: We need an easy way to extract this data offset from the gguf file
-data_offset = 1056
+call fseek(u, offset_offset, 0)
+read(u) data_offset
 call fseek(u, data_offset, 0)
 read(u) model_mark
 if (model_mark /= current_model_mark) then
