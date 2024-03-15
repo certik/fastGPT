@@ -183,7 +183,7 @@ def convert(params, n_head, n_ctx, idx, decoder_txt,
     print("Save time: ", t2-t1)
 
     # Save to GGUF
-    g = gguf.GGUFWriter("model.gguf", "gpt2")
+    g = gguf.GGUFWriter("model.gguf", None)
     g.add_tensor("header", header)
     g.add_tensor("wte", wte); g.add_tensor("wpe", wpe)
     g.add_tensor("mlp_fc_w", mlp_fc_w); g.add_tensor("mlp_fc_b", mlp_fc_b)
