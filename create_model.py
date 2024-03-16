@@ -196,6 +196,7 @@ def convert(params, n_head, n_ctx, idx, decoder_txt,
     # * .offset: the offset of the kv entry
     # * 8: The i64 length of the key string
     # * 4: The i32 type of the value
+    assert g.fields[data_offset_name].offset == 24
     offset_offset = g.fields[data_offset_name].offset + 8 + \
         len(data_offset_name) + 4
     print("offset offset:", offset_offset)
