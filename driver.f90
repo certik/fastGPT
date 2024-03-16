@@ -72,7 +72,7 @@ integer, parameter :: offset_offset = &
     19 + & ! len("general.data_offset")
     4 ! u32 type of value
 integer, parameter :: current_model_mark = 262477463
-integer, parameter :: current_model_version = 1
+integer, parameter :: current_model_version = 2
 integer :: model_mark
 integer :: u
 integer :: data_offset
