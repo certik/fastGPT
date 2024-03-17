@@ -35,6 +35,16 @@ jobs:
           variant: sccache
           key: ${{ github.job }}-${{ matrix.os }}
 
+      - name: Install GGUF
+        shell: bash -e -x -l {0}
+        run: |
+            git clone https://github.com/ggerganov/llama.cpp
+            cd llama.cpp
+            git checkout 4e9a7f7f7fb6acbddd1462909c8d696e38edbfcc
+            cd gguf-py
+            pip install .
+            cd ../..
+
       - name: Build and run
         shell: bash -l {0}
         run: |

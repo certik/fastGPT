@@ -31,17 +31,55 @@ end do
 close(u)
 end subroutine
 
+! Aligns file position in `u` to 32 byte boundary after `A` was read
+subroutine align_i4(u, A)
+integer, intent(in) :: u
+integer, intent(in) :: A(..)
+integer :: n, alignment
+alignment = 32
+n = size(A)*4
+call fseek(u, alignment-modulo(n,alignment), 1)
+end subroutine
+
+subroutine align_str(u, A)
+integer, intent(in) :: u
+character, intent(in) :: A(:)
+integer :: n, alignment
+alignment = 32
+n = size(A)
+if (modulo(n, alignment) /= 0) then
+    call fseek(u, alignment-modulo(n,alignment), 1)
+end if
+end subroutine
+
 subroutine load_model(filename, m)
 character(*), intent(in) :: filename
 type(model_t), intent(out) :: m
 ! We use the following fastGPT model type number
 !   fastGPT (digits look similar to the letters they represent)
 ! 0xfa51697 = 262477463
+
+! We read the offset to the data section at this position, which is the first
+! variable in the metadata, the name is "general.data_offset", type i32.
+integer, parameter :: offset_offset = &
+    ! header
+    4 + & ! u8[4] magic
+    4 + & ! u32 version
+    8 + & ! u64 n_arrays
+    8 + & ! u64 n_kv
+    ! kv
+    8 + & ! u64 n_str
+    19 + & ! len("general.data_offset")
+    4 ! u32 type of value
 integer, parameter :: current_model_mark = 262477463
-integer, parameter :: current_model_version = 1
+integer, parameter :: current_model_version = 2
 integer :: model_mark
 integer :: u
+integer :: data_offset
 open(newunit=u, file=filename, form="unformatted", access="stream", status="old")
+call fseek(u, offset_offset, 0)
+read(u) data_offset
+call fseek(u, data_offset, 0)
 read(u) model_mark
 if (model_mark /= current_model_mark) then
     print *, "Found:", model_mark
@@ -56,6 +94,7 @@ if (m%model_file_version /= current_model_version) then
 end if
 read(u) m%n_vocab, m%n_ctx, m%n_embd, m%n_layer, m%n_head, m%n_decoder_idx, &
     m%n_decoder_txt, m%n_vocab_idx, m%n_vocab_txt, m%n_byte_encoder
+call fseek(u, 16, 1) ! Pad the 12 element i32 array to 32 byte boundary
 allocate(m%wte(m%n_embd,m%n_vocab), m%wpe(m%n_embd,m%n_ctx), &
     m%mlp_fc_w(4*m%n_embd,m%n_embd,m%n_layer), m%mlp_fc_b(4*m%n_embd,m%n_layer), &
     m%mlp_proj_w(m%n_embd,4*m%n_embd,m%n_layer), m%mlp_proj_b(m%n_embd,m%n_layer), &
@@ -75,9 +114,15 @@ read(u) m%wte, m%wpe, &
     m%ln1_b, m%ln1_g, &
     m%ln2_b, m%ln2_g, &
     m%lnf_b, m%lnf_g, &
-    m%decoder_idx, m%decoder_txt, &
-    m%vocab_idx, m%vocab_txt, &
-    m%byte_encoder
+    m%decoder_idx
+call align_i4(u, m%decoder_idx)
+read(u) m%decoder_txt
+call align_str(u, m%decoder_txt)
+read(u) m%vocab_idx
+call align_i4(u, m%vocab_idx)
+read(u) m%vocab_txt
+call align_str(u, m%vocab_txt)
+read(u) m%byte_encoder
 close(u)
 end subroutine
 
@@ -92,7 +137,7 @@ call load_input("input", input_txt, n_tokens_to_generate)
 ! Load the model
 print "(a)", "Loading the model..."
 call cpu_time(t1)
-call load_model("model.dat", m)
+call load_model("model.gguf", m)
 call cpu_time(t2)
 print "(a,f8.3,a,i2)", "    done. Time:", t2-t1, "s, Model file version:", m%model_file_version
 print *
@@ -235,7 +280,7 @@ type(string), optional, intent(in) :: inputs(:)
 type(model_t) :: m
 character(:), allocatable :: prompt, input, output
 integer :: i, n_prompts
-call load_model("model.dat", m)
+call load_model("model.gguf", m)
 prompt = "Your name is fastGPT and you are an AI bot. The user will ask you &
 &questions and you answer in a nice, truthful, short way." // LF // "&
 &User: What is the capital of Czechia?" // LF // "&
