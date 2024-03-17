@@ -31,6 +31,12 @@ end do
 close(u)
 end subroutine
 
+! Skips `amount` bytes from the current position
+subroutine fskip(u, amount)
+integer, intent(in) :: u, amount
+call fseek(u, amount, 1)
+end subroutine
+
 ! Aligns file position in `u` to 32 byte boundary after `A` was read
 subroutine align_i4(u, A)
 integer, intent(in) :: u
@@ -38,7 +44,7 @@ integer, intent(in) :: A(..)
 integer :: n, alignment
 alignment = 32
 n = size(A)*4
-call fseek(u, alignment-modulo(n,alignment), 1)
+call fskip(u, alignment-modulo(n,alignment))
 end subroutine
 
 subroutine align_str(u, A)
@@ -48,7 +54,7 @@ integer :: n, alignment
 alignment = 32
 n = size(A)
 if (modulo(n, alignment) /= 0) then
-    call fseek(u, alignment-modulo(n,alignment), 1)
+    call fskip(u, alignment-modulo(n,alignment))
 end if
 end subroutine
 
@@ -77,9 +83,10 @@ integer :: model_mark
 integer :: u
 integer :: data_offset
 open(newunit=u, file=filename, form="unformatted", access="stream", status="old")
-call fseek(u, offset_offset, 0)
+call fskip(u, offset_offset)
 read(u) data_offset
-call fseek(u, data_offset, 0)
+! Alternatively we could have done: rewind(u); call fskip(u, data_offset)
+call fskip(u, data_offset-offset_offset-4)
 read(u) model_mark
 if (model_mark /= current_model_mark) then
     print *, "Found:", model_mark
@@ -94,7 +101,7 @@ if (m%model_file_version /= current_model_version) then
 end if
 read(u) m%n_vocab, m%n_ctx, m%n_embd, m%n_layer, m%n_head, m%n_decoder_idx, &
     m%n_decoder_txt, m%n_vocab_idx, m%n_vocab_txt, m%n_byte_encoder
-call fseek(u, 16, 1) ! Pad the 12 element i32 array to 32 byte boundary
+call fskip(u, 16) ! Pad the 12 element i32 array to 32 byte boundary
 allocate(m%wte(m%n_embd,m%n_vocab), m%wpe(m%n_embd,m%n_ctx), &
     m%mlp_fc_w(4*m%n_embd,m%n_embd,m%n_layer), m%mlp_fc_b(4*m%n_embd,m%n_layer), &
     m%mlp_proj_w(m%n_embd,4*m%n_embd,m%n_layer), m%mlp_proj_b(m%n_embd,m%n_layer), &
