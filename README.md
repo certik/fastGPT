@@ -26,8 +26,8 @@ A quick breakdown of each of the files:
 
 * `gpt2.f90`: the actual GPT-2 model and a decoder
 * `main.f90`: the main driver
-* `create_model.py`: downloads the TensorFlow model and converts to our own
-  format (`model.dat`)
+* `create_model.py`: downloads the TensorFlow model and converts to the GGUF
+  format (`model.gguf`)
 * `encode_input.py`: encodes the text input into tokens (input file for `gpt2`)
 * Matmul implementations
     * `linalg_f.f90` native Fortran
@@ -46,7 +46,22 @@ Configure and build:
     FC=gfortran cmake .
     make
 
-Create the `model.dat` file from a given GPT-2 model. Supported sizes (and the
+Download the GPT2 model weights:
+
+    curl -o model.gguf -L https://huggingface.co/certik/fastGPT/resolve/main/model_fastgpt_124M_v2.gguf
+
+You can also download 355M for the `gpt-medium` model.
+
+Now you can modify the `input` file to change the input string and set other
+parameters.
+
+Run (requires `model.gguf` and `input` in the current directory):
+
+    ./gpt2
+
+## Creating the GGUF file
+
+Create the `model.gguf` file from a given GPT-2 model. Supported sizes (and the
 corresponding names to be used in `pt.py`, and the approximate download size):
 "124M" (`gpt2`, 0.5GB), "355M" (`gpt-medium`, 1.5GB), "774M" (`gpt-large`,
 3GB), "1558M" (`gpt-xl`, 6GB). This will download the model and cache it for
@@ -54,17 +69,20 @@ subsequent runs:
 
     python create_model.py --models_dir "models" --model_size "124M"
 
-Alternatively, download the fastGPT model directly from
-https://huggingface.co/datasets/certik/fastGPT, e.g.:
+This script depends on the `gguf` Python library, that you can install using:
 
-    curl -O -L https://huggingface.co/datasets/certik/fastGPT/resolve/main/model_fastgpt_124M_v1.dat
+    git clone https://github.com/ggerganov/llama.cpp
+    cd llama.cpp
+    git checkout 4e9a7f7f7fb6acbddd1462909c8d696e38edbfcc
+    cd gguf-py
+    pip install .
 
-Now you can modify the `input` file to change the input string and set other
-parameters.
+The `gguf` library is available in pip and conda, but we currently require the
+latest version that is not available there yet.
 
-Run (requires `model.dat` and `input` in the current directory):
-
-    ./gpt2
+We used this script to create several GGUF files and uploaded them to:
+https://huggingface.co/certik/fastGPT, so that you can just download the
+pre-generated files.
 
 ### Example Output
 

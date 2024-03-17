@@ -1,6 +1,6 @@
 """
 This script loads the specified GPT-2 model from OpenAI using TensorFlow,
-converts it into our custom format and saves it to `model.dat`, which contains
+converts it into our custom format and saves it to `model.gguf`, which contains
 everything (all the parameters, all the weights, encoding/decoding
 information).
 
@@ -268,7 +268,7 @@ def main(model_size: str = "124M", models_dir: str = "models"):
     print("  Done. Loading time: ", t2-t1)
 
     # generate output ids
-    print("Converting model, saving to `model.dat`")
+    print("Converting model, saving to `model.gguf`")
     t1 = clock()
     decoder_txt = "".join(decoder)
     idx = decoder_idx(decoder)
