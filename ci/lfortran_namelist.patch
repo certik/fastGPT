@@ -1,0 +1,31 @@
+commit 8bc6115d9d2a60dc6af986f0da3b6ca21177d83b
+Author: Ondřej Čertík <ondrej@certik.us>
+Date:   Tue Sep 5 13:54:47 2023 -0600
+
+    Workaround a namelist, which is not supported yet
+
+diff --git a/driver.f90 b/driver.f90
+index a5fe28a..ff4ae2b 100644
+--- a/driver.f90
++++ b/driver.f90
+@@ -17,18 +17,9 @@ character(:), allocatable, intent(out) :: input_txt
+ integer, intent(out) :: n_tokens_to_generate
+ character(1024) :: input_txt2
+ integer :: u, ios
+-namelist / input_fastGPT / n_tokens_to_generate
+ allocate(character(0) :: input_txt)
+-input_txt = ""
+-open(newunit=u, file=filename, status="old")
+-read(u, input_fastGPT)
+-do
+-    read(u, "(a)", iostat=ios) input_txt2
+-    if (ios /= 0) exit
+-    if (len(input_txt) > 0) input_txt = input_txt // char(10)
+-    input_txt = input_txt // trim(input_txt2)
+-end do
+-close(u)
++n_tokens_to_generate = 20
++input_txt = "Alan Turing theorized that computers would one day become very powerful, but even he could not imagine"
+ end subroutine
+ 
+ ! Skips `amount` bytes from the current position
