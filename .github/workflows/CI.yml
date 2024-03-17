@@ -67,7 +67,7 @@ jobs:
         with:
           environment-file: environment.yml
           extra-specs: |
-            lfortran=0.20.3
+            lfortran=0.33.1
             sel(linux): llvm-openmp=11.1.0
 
       - uses: hendrikmuhs/ccache-action@main
