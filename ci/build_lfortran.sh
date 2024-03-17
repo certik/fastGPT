@@ -2,6 +2,8 @@
 
 set -ex
 
+patch -p1 < ci/lfortran_namelist.patch
+
 curl -o model.gguf -L https://huggingface.co/certik/fastGPT/resolve/main/model_fastgpt_124M_v2.gguf
 
 mkdir lf
