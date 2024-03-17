@@ -34,7 +34,11 @@ end subroutine
 ! Skips `amount` bytes from the current position
 subroutine fskip(u, amount)
 integer, intent(in) :: u, amount
-call fseek(u, amount, 1)
+character, allocatable :: tmp(:)
+! Note: the code below is equivalent to the non-standard: fseek(u, amount, 1)
+! Let's allocate on heap, in case the skip is large
+allocate(tmp(amount))
+read(u) tmp
 end subroutine
 
 ! Aligns file position in `u` to 32 byte boundary after `A` was read
