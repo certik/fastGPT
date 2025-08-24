@@ -109,19 +109,26 @@ end function
 
 function merge_pair(intokens, idx) result(tokens)
 ! Merge the pair `idx`
+! Input token array
 type(string), intent(in) :: intokens(:)
 integer, intent(in) :: idx
+! Output token array of size(intokens)-1
 type(string), allocatable :: tokens(:)
+print *, "M1"
 allocate(tokens(size(intokens)-1))
+print *, "M2"
 tokens(:idx-1) = intokens(:idx-1)
+print *, "M3"
 tokens(idx)%s = intokens(idx)%s // intokens(idx+1)%s
+print *, "M4"
 tokens(idx+1:) = intokens(idx+2:)
+print *, "M5"
 end function
 
 function merge_utf8_pairs(intokens) result(tokens)
 ! Merge all UTF-8 character pairs
 type(string), intent(in) :: intokens(:)
-type(string), allocatable :: tokens(:)
+type(string), allocatable :: tokens(:), tokens2(:)
 integer :: i, j
 logical :: one_more_pass
 allocate(tokens(size(intokens)))
@@ -132,7 +139,12 @@ do while(one_more_pass)
     one_more_pass = .false.
     do i = j, size(tokens)-1
         if (len(tokens(i)%s) == 1 .and. iachar(tokens(i)%s(1:1)) >= 128) then
-            tokens = merge_pair(tokens, i)
+            if (allocated(tokens2)) deallocate(tokens2)
+            allocate(tokens2(size(tokens)-1))
+            tokens2 = merge_pair(tokens, i)
+            deallocate(tokens)
+            allocate(tokens(size(tokens2)))
+            tokens = tokens2
             one_more_pass = .true.
             j = i + 1
             exit
@@ -140,6 +152,7 @@ do while(one_more_pass)
     end do
 end do
 !print *, "tokens = ", (tokens(i)%s // " ", i=1,size(tokens))
+print *, "merge ok"
 end function
 
 function bpe(token, vocab_idx, vocab_txt) result(tokens)
@@ -147,16 +160,25 @@ function bpe(token, vocab_idx, vocab_txt) result(tokens)
 character(*), intent(in) :: token
 integer, intent(in) :: vocab_idx(0:)
 character, intent(in) :: vocab_txt(:)
-type(string), allocatable :: tokens(:)
+type(string), allocatable :: tokens(:), tokens2(:)
 integer, allocatable :: pair_scores(:)
 integer :: not_found, merge_pair_idx
 integer :: i
+print *, "B1"
 not_found = size(vocab_idx) + 10
 allocate(tokens(len(token)))
 do i = 1, len(token)
     tokens(i)%s = token(i:i)
 end do
-tokens = merge_utf8_pairs(tokens)
+print *, "B2"
+if (allocated(tokens2)) deallocate(tokens2)
+print *, "BM1"
+tokens2 = merge_utf8_pairs(tokens)
+print *, "BM2"
+deallocate(tokens)
+allocate(tokens(size(tokens2)))
+tokens = tokens2
+print *, "B3"
 do
     !print *, "tokens = ", (tokens(i)%s // " ", i=1,size(tokens))
     if (size(tokens) == 1) then
@@ -164,12 +186,14 @@ do
         ! token was a one character word, either way we are done:
         exit
     end if
+    print *, "B4"
     allocate(pair_scores(size(tokens)-1))
     ! Loop over pairs
     do i = 1, size(tokens)-1
         pair_scores(i) = word_idx(tokens(i)%s // " " // tokens(i+1)%s, vocab_idx, vocab_txt)
         if (pair_scores(i) == -1) pair_scores(i) = not_found
     end do
+    print *, "B5"
     merge_pair_idx = minloc(pair_scores, 1)
     if (pair_scores(merge_pair_idx) == not_found) then
         ! No token pair can be merged, so we are done:
@@ -177,9 +201,18 @@ do
     end if
     !print *, pair_scores
     !print *, merge_pair_idx, pair_scores(merge_pair_idx)
-    tokens = merge_pair(tokens, merge_pair_idx)
+    print *, "B6"
+    ! The assignment fails right here
+    if (allocated(tokens2)) deallocate(tokens2)
+    allocate(tokens2(size(tokens)-1))
+    tokens2 = merge_pair(tokens, merge_pair_idx)
+    deallocate(tokens)
+    allocate(tokens(size(tokens2)))
+    tokens = tokens2
+    print *, "B7"
     deallocate(pair_scores)
 end do
+print *, "B8"
 !print *, "final tokens = ", (tokens(i)%s // " ", i=1,size(tokens))
 end function
 
@@ -194,12 +227,15 @@ integer, allocatable :: tokens2(:)
 character(:), allocatable :: tmp, tmp2
 type(string), allocatable :: bpe_tokens(:)
 integer :: i, j, c, n_tokens
+print *, "start"
 n_tokens = 0
 i = 1
 do
+    print *, "X1"
     tmp = next_token(input, i)
     if (tmp == "") exit
     tmp2 = ""
+    print *, "X2"
     do j = 1, len(tmp)
         c = iachar(tmp(j:j))
         c = byte_encoder(c)
@@ -208,10 +244,13 @@ do
         ! either one or two bytes of UTF-8 are appended to tmp2:
         call codepoint_to_utf8(tmp2, c)
     end do
+    print *, "X3"
     bpe_tokens = bpe(tmp2, vocab_idx, vocab_txt)
+    print *, "X4"
     do j = 1, size(bpe_tokens)
         n_tokens = n_tokens + 1
         if (n_tokens > max_tokens) error stop "exceeded max_tokens"
+        print *, "X", j
         tokens(n_tokens) = word_idx(bpe_tokens(j)%s, idx, decoder_txt)
     end do
     deallocate(tmp2)
