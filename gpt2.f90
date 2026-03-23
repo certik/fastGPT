@@ -6,20 +6,25 @@ implicit none
 integer, parameter :: sp = kind(0.0)
 real(sp), parameter :: pi = 3.14159265358979323846_sp
 
+! Per-layer weights for a single transformer block
+type :: layer_t
+    real(sp), allocatable :: mlp_fc_w(:,:), mlp_fc_b(:)
+    real(sp), allocatable :: mlp_proj_w(:,:), mlp_proj_b(:)
+    real(sp), allocatable :: attn_w(:,:), attn_b(:)
+    real(sp), allocatable :: attn_proj_w(:,:), attn_proj_b(:)
+    real(sp), allocatable :: ln1_g(:), ln1_b(:)
+    real(sp), allocatable :: ln2_g(:), ln2_b(:)
+end type
+
 ! This derived type contains all the data of the GPT-2 model, including all
 ! weights, model parameters, and encoder/decoder data
 type :: model_t
     integer :: n_vocab, n_ctx, n_embd, n_layer, n_head, &
         n_decoder_idx, n_decoder_txt, &
         n_vocab_idx, n_vocab_txt, n_byte_encoder
-    real(sp), allocatable :: wte(:,:), wpe(:,:), &
-        mlp_fc_w(:,:,:), mlp_fc_b(:,:), &
-        mlp_proj_w(:,:,:), mlp_proj_b(:,:), &
-        attn_w(:,:,:), attn_b(:,:), &
-        attn_proj_w(:,:,:), attn_proj_b(:,:), &
-        ln1_b(:,:), ln1_g(:,:), &
-        ln2_b(:,:), ln2_g(:,:), &
-        lnf_b(:), lnf_g(:)
+    real(sp), allocatable :: wte(:,:), wpe(:,:)
+    type(layer_t), allocatable :: layers(:)
+    real(sp), allocatable :: lnf_b(:), lnf_g(:)
     integer, allocatable :: decoder_idx(:), vocab_idx(:), byte_encoder(:)
     character, allocatable :: decoder_txt(:), vocab_txt(:)
     integer :: model_file_version
@@ -49,19 +54,19 @@ real(sp), intent(in) :: x
 y = 0.5_sp * x * (1 + tanh(sqrt(2 / pi) * (x + 0.044715_sp * x**3)))
 end function
 
-function softmax(x) result(y)
-real(sp), intent(in) :: x(:,:)
-real(sp) :: y(size(x,1),size(x,2))
+! In-place softmax over columns
+subroutine softmax(x)
+real(sp), intent(inout) :: x(:,:)
 integer :: i
 do i = 1, size(x,2)
-    y(:,i) = exp(x(:,i) - maxval(x(:,i)))
-    y(:,i) = y(:,i) / sum(y(:,i))
+    x(:,i) = exp(x(:,i) - maxval(x(:,i)))
+    x(:,i) = x(:,i) / sum(x(:,i))
 end do
-end function
+end subroutine
 
-function layer_norm(x, g, b, eps) result(y)
+subroutine layer_norm(x, g, b, eps, y)
 real(sp), intent(in) :: x(:,:), g(:), b(:), eps
-real(sp) :: y(size(x,1),size(x,2))
+real(sp), intent(out) :: y(size(x,1),size(x,2))
 real(sp) :: mean(size(x,2)), variance(size(x,2))
 integer :: i
 do i = 1, size(x,2)
@@ -76,60 +81,91 @@ do i = 1, size(x,2)
     y(:,i) = (x(:,i) - mean(i)) / sqrt(variance(i) + eps)
     y(:,i) = g(:) * y(:,i) + b(:)
 end do
-end function
+end subroutine
 
-function linear(x, w, b) result(y)
+subroutine linear(x, w, b, y)
 real(sp), intent(in) :: x(:,:), w(:,:), b(:)
-real(sp) :: y(size(b,1),size(x,2))
+real(sp), intent(out) :: y(size(b,1),size(x,2))
 integer :: i
 !y = matmul(w, x) + spread(b, 2, size(x,2))
 !y = matmul(w, x)
-call matmul_2d(w, x, y)
-do i = 1, size(y,2)
-    y(:,i) = y(:,i) + b(:)
-end do
-end function
+if (size(x, 2) == 1) then
+    ! Single-token path: plain GEMV avoids BLAS packing overhead
+    y(:, 1) = matmul(w, x(:, 1)) + b(:)
+else
+    call matmul_2d(w, x, y)
+    do i = 1, size(y,2)
+        y(:,i) = y(:,i) + b(:)
+    end do
+end if
+end subroutine
 
-function ffn(x, fc_w, fc_b, proj_w, proj_b) result(y)
+subroutine ffn(x, fc_w, fc_b, proj_w, proj_b, y)
 real(sp), intent(in) :: x(:,:), fc_w(:,:), fc_b(:), proj_w(:,:), proj_b(:)
-real(sp) :: y(size(x,1),size(x,2))
+real(sp), intent(out) :: y(size(x,1),size(x,2))
 !real(sp) :: a(4*size(x,1),size(x,2))
 !a = gelu(linear(x, fc_w, fc_b))
-y = linear(gelu(linear(x, fc_w, fc_b)), proj_w, proj_b)
-end function
+real(sp) :: tmp_hidden(size(fc_b,1), size(x,2)) ! Explicit temporary avoids function return copy
+call linear(x, fc_w, fc_b, tmp_hidden)
+tmp_hidden = gelu(tmp_hidden)
+call linear(tmp_hidden, proj_w, proj_b, y)
+end subroutine
 
-function attention(n_embd_head,n_seq,n_seq_x, q, k, v, mask) result(y)
+! Scaled dot-product attention. When n_seq_x == 1 (single new token during
+! cached inference), uses a fused dot-product loop to avoid forming the full
+! score matrix, which would otherwise trigger a costly BLAS packing operation.
+subroutine attention_zerocopy(n_embd_head, n_seq, n_seq_x, q, k, v, mask, y)
 integer, intent(in) :: n_embd_head, n_seq, n_seq_x
-real(sp), intent(in) :: q(n_embd_head,n_seq_x), k(n_embd_head,n_seq), v(n_embd_head,n_seq), mask(n_seq,n_seq_x)
-real(sp) :: y(n_embd_head,n_seq_x)
-real(sp) :: tmp(n_seq,n_seq_x)
-!tmp = matmul(transpose(k), q)
-!call matmul_2d(transpose(k), q, tmp)
-call matmul_2d_t(k, q, tmp)
-call matmul_2d(v, softmax(tmp / sqrt(real(n_embd_head,sp)) + mask), y)
-end function
+real(sp), intent(in) :: q(n_embd_head, n_seq_x)
+real(sp), intent(in) :: k(n_embd_head, n_seq)
+real(sp), intent(in) :: v(n_embd_head, n_seq)
+real(sp), intent(in) :: mask(n_seq, n_seq_x)
+real(sp), intent(out) :: y(n_embd_head, n_seq_x)
+real(sp) :: tmp(n_seq, n_seq_x)
+real(sp) :: tmp_t(n_seq_x, n_seq)
+integer :: i
+if (n_seq_x == 1) then
+    do i = 1, n_seq
+        tmp(i, 1) = dot_product(k(:, i), q(:, 1))
+    end do
+    tmp(:, 1) = tmp(:, 1) / sqrt(real(n_embd_head,sp)) + mask(:, 1)
+    tmp(:, 1) = exp(tmp(:, 1) - maxval(tmp(:, 1)))
+    tmp(:, 1) = tmp(:, 1) / sum(tmp(:, 1))
+    y(:, 1) = 0.0_sp
+    do i = 1, n_seq
+        y(:, 1) = y(:, 1) + v(:, i) * tmp(i, 1)
+    end do
+else
+    call matmul_2d_t(q, k, tmp_t)
+    tmp = transpose(tmp_t)
+    tmp = tmp / sqrt(real(n_embd_head,sp)) + mask
+    call softmax(tmp)
+    call matmul_2d(v, tmp, y)
+end if
+end subroutine
 
-function mha(n_seq, n_seq_x, n_embd, x, attn_w, attn_b, proj_w, proj_b, n_head, &
-            use_kv_cache, kv_cache) &
-        result(y)
-integer, intent(in) :: n_seq, n_seq_x, n_embd
+! Multi-head attention. k_cache and v_cache hold key/value vectors per head
+! across the full sequence; they are written here and read by attention_zerocopy.
+subroutine mha(n_seq, n_seq_x, n_embd, x, attn_w, attn_b, proj_w, proj_b, n_head, &
+            use_kv_cache, max_seq_cache, k_cache, v_cache, y)
+integer, intent(in) :: n_seq, n_seq_x, n_embd, max_seq_cache
 real(sp), intent(in) :: x(n_embd,n_seq_x), &
     attn_w(3*n_embd,n_embd), attn_b(3*n_embd), &
     proj_w(n_embd,n_embd), proj_b(n_embd)
-real(sp), intent(inout) :: kv_cache(n_embd,n_seq,2)
 integer, intent(in) :: n_head
 logical, intent(in) :: use_kv_cache
-real(sp) :: y(n_embd,n_seq_x)
+real(sp), intent(inout) :: k_cache(n_embd/n_head, max_seq_cache, n_head)
+real(sp), intent(inout) :: v_cache(n_embd/n_head, max_seq_cache, n_head)
+real(sp), intent(out) :: y(n_embd,n_seq_x)
 real(sp) :: causal_mask(n_seq,n_seq_x)
 real(sp) :: x2(3*n_embd,n_seq_x)
-real(sp) :: q(n_embd/n_head,n_seq_x), k(n_embd/n_head,n_seq), v(n_embd/n_head,n_seq)
-real(sp) :: yy(n_embd/n_head,n_seq_x)
-integer :: i, j, l
+real(sp) :: tmp_y(n_embd, n_seq_x)
+integer :: i, j, l, head_dim, istart, iend
 ! Mask
 if (use_kv_cache) then
     causal_mask = 0
 else
-    do j = 1, n_seq
+    do j = 1, n_seq_x
     do i = 1, n_seq
         if (i > j) then
             causal_mask(i,j) = -1e10_sp
@@ -139,105 +175,115 @@ else
     end do
     end do
 end if
-x2 = linear(x, attn_w, attn_b)
+call linear(x, attn_w, attn_b, x2)
+head_dim = n_embd / n_head
+! Populate k/v caches from the projected input (x2 = [Q | K | V])
 if (use_kv_cache) then
-    do j = 1, n_embd
-        kv_cache(j,n_seq,1) = x2((2-1)*n_embd+j,1)
-        kv_cache(j,n_seq,2) = x2((3-1)*n_embd+j,1)
+    do l = 1, n_head
+        istart = (l-1) * head_dim + 1
+        do j = 1, head_dim
+            k_cache(j, n_seq, l) = x2(n_embd + istart - 1 + j, 1)
+            v_cache(j, n_seq, l) = x2(2*n_embd + istart - 1 + j, 1)
+        end do
     end do
 else
-    do i = 1, n_seq
-    do j = 1, n_embd
-        kv_cache(j,i,1) = x2((2-1)*n_embd+j,i)
-        kv_cache(j,i,2) = x2((3-1)*n_embd+j,i)
-    end do
+    do l = 1, n_head
+        istart = (l-1) * head_dim + 1
+        do i = 1, n_seq
+        do j = 1, head_dim
+            k_cache(j, i, l) = x2(n_embd + istart - 1 + j, i)
+            v_cache(j, i, l) = x2(2*n_embd + istart - 1 + j, i)
+        end do
+        end do
     end do
 end if
 ! Perform attention over each head
+!$omp parallel do default(none) private(l, istart, iend) &
+!$omp shared(n_head, head_dim, n_seq, n_seq_x, x2, k_cache, v_cache, causal_mask, tmp_y)
 do l = 1, n_head
-    do i = 1, n_seq_x
-    do j = 1, n_embd/n_head
-        q(j,i) = x2((l-1)*n_embd/n_head+j,i)
-    end do
-    end do
-    do i = 1, n_seq
-    do j = 1, n_embd/n_head
-        k(j,i) = kv_cache((l-1)*n_embd/n_head+j,i,1)
-        v(j,i) = kv_cache((l-1)*n_embd/n_head+j,i,2)
-    end do
-    end do
-    yy = attention(n_embd/n_head, n_seq, n_seq_x, q, k, v, causal_mask)
-    do i = 1, n_seq_x
-    do j = 1, n_embd/n_head
-        y((l-1)*n_embd/n_head+j,i) = yy(j,i)
-    end do
-    end do
+    istart = (l-1) * head_dim + 1
+    iend   = l * head_dim
+    call attention_zerocopy(head_dim, n_seq, n_seq_x, &
+        x2(istart:iend, :), &
+        k_cache(:, 1:n_seq, l), &
+        v_cache(:, 1:n_seq, l), &
+        causal_mask, tmp_y(istart:iend, :))
 end do
+!$omp end parallel do
 ! Out projection
-y = linear(y, proj_w, proj_b)
-end function
+call linear(tmp_y, proj_w, proj_b, y)
+end subroutine
 
 
-function transformer_block(n_seq, n_seq_x, n_embd, x, mlp_fc_w, mlp_fc_b, mlp_proj_w, mlp_proj_b, &
+! One decoder block: layer-norm -> MHA -> residual, layer-norm -> FFN -> residual.
+! x is updated in place to avoid an extra copy of the full activation buffer.
+subroutine transformer_block(n_seq, n_seq_x, n_embd, x, mlp_fc_w, mlp_fc_b, mlp_proj_w, mlp_proj_b, &
         attn_w, attn_b, attn_proj_w, attn_proj_b, ln1_g, ln1_b, ln2_g, ln2_b, &
-        n_head, use_kv_cache, kv_cache) result(y)
-real(sp), intent(in) :: x(n_embd,n_seq_x), &
-    mlp_fc_w(:,:), mlp_fc_b(:), &
+        n_head, use_kv_cache, max_seq_cache, k_cache, v_cache)
+real(sp), intent(inout) :: x(n_embd,n_seq_x)
+real(sp), intent(in) :: mlp_fc_w(:,:), mlp_fc_b(:), &
     mlp_proj_w(:,:), mlp_proj_b(:), &
     attn_w(:,:), attn_b(:), attn_proj_w(:,:), attn_proj_b(:), &
     ln1_g(:), ln1_b(:), ln2_g(:), ln2_b(:)
-integer, intent(in) :: n_head
+integer, intent(in) :: n_head, max_seq_cache
 integer, intent(in) :: n_seq, n_seq_x, n_embd
-real(sp) :: y(n_embd,n_seq_x)
 logical, intent(in) :: use_kv_cache
-real(sp), intent(inout) :: kv_cache(n_embd,n_seq,2)
-y = x + mha(n_seq, n_seq_x, n_embd, layer_norm(x, ln1_g, ln1_b, 1e-5_sp), &
-    attn_w, attn_b, attn_proj_w, attn_proj_b, n_head, use_kv_cache, kv_cache)
-y = y + ffn(layer_norm(y, ln2_g, ln2_b, 1e-5_sp), &
-    mlp_fc_w, mlp_fc_b, mlp_proj_w, mlp_proj_b)
-end function
+real(sp), intent(inout) :: k_cache(n_embd/n_head, max_seq_cache, n_head)
+real(sp), intent(inout) :: v_cache(n_embd/n_head, max_seq_cache, n_head)
+real(sp) :: norm_out(n_embd, n_seq_x)
+real(sp) :: block_out(n_embd, n_seq_x)
+call layer_norm(x, ln1_g, ln1_b, 1e-5_sp, norm_out)
+call mha(n_seq, n_seq_x, n_embd, norm_out, attn_w, attn_b, attn_proj_w, attn_proj_b, &
+         n_head, use_kv_cache, max_seq_cache, k_cache, v_cache, block_out)
+x = x + block_out
+call layer_norm(x, ln2_g, ln2_b, 1e-5_sp, norm_out)
+call ffn(norm_out, mlp_fc_w, mlp_fc_b, mlp_proj_w, mlp_proj_b, block_out)
+x = x + block_out
+end subroutine
 
-function gpt2(n_vocab, n_ctx, n_seq, n_seq_x, n_embd, n_layer, n_head, input, &
-        wte, wpe, &
-        mlp_fc_w, mlp_fc_b, mlp_proj_w, mlp_proj_b, &
-        attn_w, attn_b, attn_proj_w, attn_proj_b, &
-        ln1_g, ln1_b, ln2_g, ln2_b, lnf_g, lnf_b, &
-        use_kv_cache, kv_cache) result(y)
-integer, intent(in) :: n_vocab, n_ctx, n_seq, n_seq_x, n_embd, n_layer, n_head
+! Full GPT-2 forward pass. wte is stored transposed (n_vocab, n_embd) so that
+! token embedding lookups are row accesses and the final logit projection is a
+! plain matmul rather than matmul(transpose(wte), x).
+subroutine gpt2(n_vocab, n_ctx, n_seq, n_seq_x, n_embd, n_layer, n_head, input, &
+        wte, wpe, layers, lnf_g, lnf_b, use_kv_cache, max_seq_cache, k_cache, v_cache, logits)
+integer, intent(in) :: n_vocab, n_ctx, n_seq, n_seq_x, n_embd, n_layer, n_head, max_seq_cache
 integer, intent(in) :: input(n_seq)
-real(sp), intent(in) :: wte(n_embd,n_vocab), wpe(n_embd,n_ctx), &
-    mlp_fc_w(4*n_embd,n_embd,n_layer), mlp_fc_b(4*n_embd,n_layer), &
-    mlp_proj_w(n_embd,4*n_embd,n_layer), mlp_proj_b(n_embd,n_layer), &
-    attn_w(3*n_embd,n_embd,n_layer), attn_b(3*n_embd,n_layer), &
-    attn_proj_w(n_embd,n_embd,n_layer), attn_proj_b(n_embd,n_layer), &
-    ln1_b(n_embd,n_layer), ln1_g(n_embd,n_layer), &
-    ln2_b(n_embd,n_layer), ln2_g(n_embd,n_layer), &
-    lnf_b(n_embd), lnf_g(n_embd)
+real(sp), intent(in) :: wte(n_vocab,n_embd), wpe(n_embd,n_ctx)
+type(layer_t), intent(in) :: layers(n_layer)
+real(sp), intent(in) :: lnf_b(n_embd), lnf_g(n_embd)
 logical, intent(in) :: use_kv_cache
-real(sp), intent(inout) :: kv_cache(n_embd,n_seq,2,n_layer)
-real(sp) :: y(n_vocab,n_seq_x)
+real(sp), intent(inout) :: k_cache(n_embd/n_head, max_seq_cache, n_head, n_layer)
+real(sp), intent(inout) :: v_cache(n_embd/n_head, max_seq_cache, n_head, n_layer)
+real(sp), intent(out) :: logits(n_vocab,n_seq_x)
 real(sp) :: x(n_embd,n_seq_x)
 integer :: i
 if (use_kv_cache) then
     i = n_seq
-    x(:,1) = wte(:,input(i)+1) + wpe(:,i)
+    x(:,1) = wte(input(i)+1,:) + wpe(:,i)
 else
     do i = 1, n_seq
-        x(:,i) = wte(:,input(i)+1) + wpe(:,i)
+        x(:,i) = wte(input(i)+1,:) + wpe(:,i)
     end do
 end if
 do i = 1, n_layer
-    x = transformer_block(n_seq, n_seq_x, n_embd, x, &
-        mlp_fc_w(:,:,i), mlp_fc_b(:,i), &
-        mlp_proj_w(:,:,i), mlp_proj_b(:,i), &
-        attn_w(:,:,i), attn_b(:,i), attn_proj_w(:,:,i), attn_proj_b(:,i), &
-        ln1_g(:,i), ln1_b(:,i), ln2_g(:,i), ln2_b(:,i), &
-        n_head, use_kv_cache, kv_cache(:,:,:,i))
+    call transformer_block(n_seq, n_seq_x, n_embd, x, &
+        layers(i)%mlp_fc_w, layers(i)%mlp_fc_b, &
+        layers(i)%mlp_proj_w, layers(i)%mlp_proj_b, &
+        layers(i)%attn_w, layers(i)%attn_b, layers(i)%attn_proj_w, layers(i)%attn_proj_b, &
+        layers(i)%ln1_g, layers(i)%ln1_b, layers(i)%ln2_g, layers(i)%ln2_b, &
+        n_head, use_kv_cache, max_seq_cache, k_cache(:,:,:,i), v_cache(:,:,:,i))
 end do
-x = layer_norm(x, lnf_g, lnf_b, 1e-5)
-!y = matmul(transpose(wte), x)
-call matmul_2d_t(wte, x, y)
-end function
+! FINAL HUGE GEMV BYPASS: Stop OpenBLAS from packing the massive vocab matrix!
+block
+    real(sp) :: x_norm(n_embd, n_seq_x)
+    call layer_norm(x, lnf_g, lnf_b, 1e-5_sp, x_norm)
+    if (n_seq_x == 1) then
+        logits(:, 1) = matmul(wte, x_norm(:, 1))
+    else
+        call matmul_2d(wte, x_norm, logits)
+    end if
+end block
+end subroutine
 
 subroutine generate(output, n_tokens_to_generate, m, &
         n_seq, input, &
@@ -256,9 +302,12 @@ integer :: n_seq2, n_seq_x
 integer :: next_id
 integer :: input2(size(input)+n_tokens_to_generate)
 logical :: use_kv_cache
-real(sp) :: kv_cache(m%n_embd,n_seq+n_tokens_to_generate,2,m%n_layer)
-real(sp), allocatable :: kv_cache2(:,:,:,:)
+integer :: max_seq_cache
+! Allocate full-length caches up front; pass directly each iteration
+real(sp) :: k_cache(m%n_embd/m%n_head, n_seq+n_tokens_to_generate, m%n_head, m%n_layer)
+real(sp) :: v_cache(m%n_embd/m%n_head, n_seq+n_tokens_to_generate, m%n_head, m%n_layer)
 character(:), allocatable :: output_txt, last_token
+max_seq_cache = n_seq + n_tokens_to_generate ! Fixed cache dimension passed to gpt2
 if (present(stop_text)) then
     allocate(character(0) :: output_txt)
     output_txt = ""
@@ -276,19 +325,17 @@ do i = 1, n_tokens_to_generate
     else
         n_seq_x = n_seq2
     end if
-    allocate(kv_cache2(m%n_embd,n_seq2,2,m%n_layer))
-    kv_cache2(:,:,:,:) = kv_cache(:,:n_seq2,:,:)
     allocate(logits(m%n_vocab, n_seq_x))
-    logits = gpt2(m%n_vocab, m%n_ctx, n_seq2, n_seq_x, m%n_embd, m%n_layer, &
+    call gpt2(m%n_vocab, m%n_ctx, n_seq2, n_seq_x, m%n_embd, m%n_layer, &
             m%n_head, &
             input2(:n_seq2), &
             m%wte, m%wpe, &
-            m%mlp_fc_w, m%mlp_fc_b, m%mlp_proj_w, m%mlp_proj_b, &
-            m%attn_w, m%attn_b, m%attn_proj_w, m%attn_proj_b, &
-            m%ln1_g, m%ln1_b, m%ln2_g, m%ln2_b, m%lnf_g, m%lnf_b, use_kv_cache,&
-            kv_cache2)
-    kv_cache(:,:n_seq2,:,:) = kv_cache2(:,:,:,:)
-    deallocate(kv_cache2)
+            m%layers, &
+            m%lnf_g, m%lnf_b, use_kv_cache, &
+            max_seq_cache, &
+            k_cache, &
+            v_cache, &
+            logits)
     next_id = maxloc(logits(:,n_seq_x), dim=1)-1
     input2(n_seq2+1) = next_id
     last_token = decode([next_id], m%decoder_idx, &

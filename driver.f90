@@ -86,6 +86,14 @@ integer, parameter :: current_model_version = 2
 integer :: model_mark
 integer :: u
 integer :: data_offset
+real(sp), allocatable :: temp_wte(:,:)
+real(sp), allocatable :: tmp_mlp_fc_w(:,:,:), tmp_mlp_fc_b(:,:), &
+    tmp_mlp_proj_w(:,:,:), tmp_mlp_proj_b(:,:), &
+    tmp_attn_w(:,:,:), tmp_attn_b(:,:), &
+    tmp_attn_proj_w(:,:,:), tmp_attn_proj_b(:,:), &
+    tmp_ln1_b(:,:), tmp_ln1_g(:,:), &
+    tmp_ln2_b(:,:), tmp_ln2_g(:,:)
+integer :: i
 open(newunit=u, file=filename, form="unformatted", access="stream", status="old")
 call fskip(u, offset_offset)
 read(u) data_offset
@@ -106,26 +114,48 @@ end if
 read(u) m%n_vocab, m%n_ctx, m%n_embd, m%n_layer, m%n_head, m%n_decoder_idx, &
     m%n_decoder_txt, m%n_vocab_idx, m%n_vocab_txt, m%n_byte_encoder
 call fskip(u, 16) ! Pad the 12 element i32 array to 32 byte boundary
-allocate(m%wte(m%n_embd,m%n_vocab), m%wpe(m%n_embd,m%n_ctx), &
-    m%mlp_fc_w(4*m%n_embd,m%n_embd,m%n_layer), m%mlp_fc_b(4*m%n_embd,m%n_layer), &
-    m%mlp_proj_w(m%n_embd,4*m%n_embd,m%n_layer), m%mlp_proj_b(m%n_embd,m%n_layer), &
-    m%attn_w(3*m%n_embd,m%n_embd,m%n_layer), m%attn_b(3*m%n_embd,m%n_layer), &
-    m%attn_proj_w(m%n_embd,m%n_embd,m%n_layer), m%attn_proj_b(m%n_embd,m%n_layer), &
-    m%ln1_b(m%n_embd,m%n_layer), m%ln1_g(m%n_embd,m%n_layer), &
-    m%ln2_b(m%n_embd,m%n_layer), m%ln2_g(m%n_embd,m%n_layer), &
+allocate(temp_wte(m%n_embd,m%n_vocab), m%wpe(m%n_embd,m%n_ctx), &
+    tmp_mlp_fc_w(4*m%n_embd,m%n_embd,m%n_layer), tmp_mlp_fc_b(4*m%n_embd,m%n_layer), &
+    tmp_mlp_proj_w(m%n_embd,4*m%n_embd,m%n_layer), tmp_mlp_proj_b(m%n_embd,m%n_layer), &
+    tmp_attn_w(3*m%n_embd,m%n_embd,m%n_layer), tmp_attn_b(3*m%n_embd,m%n_layer), &
+    tmp_attn_proj_w(m%n_embd,m%n_embd,m%n_layer), tmp_attn_proj_b(m%n_embd,m%n_layer), &
+    tmp_ln1_b(m%n_embd,m%n_layer), tmp_ln1_g(m%n_embd,m%n_layer), &
+    tmp_ln2_b(m%n_embd,m%n_layer), tmp_ln2_g(m%n_embd,m%n_layer), &
     m%lnf_b(m%n_embd), m%lnf_g(m%n_embd), &
     m%decoder_idx(0:m%n_decoder_idx-1), m%decoder_txt(m%n_decoder_txt), &
     m%vocab_idx(0:m%n_vocab_idx-1), m%vocab_txt(m%n_vocab_txt), &
     m%byte_encoder(0:m%n_byte_encoder-1))
-read(u) m%wte, m%wpe, &
-    m%mlp_fc_w, m%mlp_fc_b, &
-    m%mlp_proj_w, m%mlp_proj_b, &
-    m%attn_w, m%attn_b, &
-    m%attn_proj_w, m%attn_proj_b, &
-    m%ln1_b, m%ln1_g, &
-    m%ln2_b, m%ln2_g, &
-    m%lnf_b, m%lnf_g, &
-    m%decoder_idx
+read(u) temp_wte, m%wpe, tmp_mlp_fc_w, tmp_mlp_fc_b, tmp_mlp_proj_w, tmp_mlp_proj_b, &
+    tmp_attn_w, tmp_attn_b, tmp_attn_proj_w, tmp_attn_proj_b, &
+    tmp_ln1_b, tmp_ln1_g, tmp_ln2_b, tmp_ln2_g, m%lnf_b, m%lnf_g, m%decoder_idx
+
+! Pre-transpose WTE once to avoid runtime itcopy
+allocate(m%wte(m%n_vocab, m%n_embd))
+m%wte = transpose(temp_wte)
+
+! Unpack the 3D weights into 2D layers for contiguous cache layout
+allocate(m%layers(m%n_layer))
+do i = 1, m%n_layer
+    allocate(m%layers(i)%mlp_fc_w(4*m%n_embd, m%n_embd), m%layers(i)%mlp_fc_b(4*m%n_embd), &
+             m%layers(i)%mlp_proj_w(m%n_embd, 4*m%n_embd), m%layers(i)%mlp_proj_b(m%n_embd), &
+             m%layers(i)%attn_w(3*m%n_embd, m%n_embd), m%layers(i)%attn_b(3*m%n_embd), &
+             m%layers(i)%attn_proj_w(m%n_embd, m%n_embd), m%layers(i)%attn_proj_b(m%n_embd), &
+             m%layers(i)%ln1_b(m%n_embd), m%layers(i)%ln1_g(m%n_embd), &
+             m%layers(i)%ln2_b(m%n_embd), m%layers(i)%ln2_g(m%n_embd))
+    m%layers(i)%mlp_fc_w = tmp_mlp_fc_w(:,:,i)
+    m%layers(i)%mlp_fc_b = tmp_mlp_fc_b(:,i)
+    m%layers(i)%mlp_proj_w = tmp_mlp_proj_w(:,:,i)
+    m%layers(i)%mlp_proj_b = tmp_mlp_proj_b(:,i)
+    m%layers(i)%attn_w = tmp_attn_w(:,:,i)
+    m%layers(i)%attn_b = tmp_attn_b(:,i)
+    m%layers(i)%attn_proj_w = tmp_attn_proj_w(:,:,i)
+    m%layers(i)%attn_proj_b = tmp_attn_proj_b(:,i)
+    m%layers(i)%ln1_b = tmp_ln1_b(:,i)
+    m%layers(i)%ln1_g = tmp_ln1_g(:,i)
+    m%layers(i)%ln2_b = tmp_ln2_b(:,i)
+    m%layers(i)%ln2_g = tmp_ln2_g(:,i)
+end do
+
 call align_i4(u, m%decoder_idx)
 read(u) m%decoder_txt
 call align_str(u, m%decoder_txt)
@@ -209,7 +239,6 @@ if (n_seq + n_tokens_to_generate >= m%n_ctx) then
 end if
 
 print "(a)", "Decoded input as text:"
-!print "(a)", decode(input, decoder_idx, decoder_txt, byte_decoder)
 allocate(character(0) :: output_txt) ! Fix GFortran warning
 output_txt = decode(input, m%decoder_idx, m%decoder_txt, byte_decoder)
 print "(a)", output_txt
